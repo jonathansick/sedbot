@@ -15,7 +15,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import matplotlib.gridspec as gridspec
 
-from sedbot.proto_phot_trans import mags_to_mjy
+from sedbot.photconv import ab_to_mjy
 
 
 def main():
@@ -32,7 +32,7 @@ def main():
 
     sp = fsps.StellarPopulation(**pset_true)
     mock_mags = sp.get_mags(bands=bands, tage=pset_true['tage'])
-    mock_mjy = mags_to_mjy(mock_mags, d)
+    mock_mjy = ab_to_mjy(mock_mags, d)
     sigma_mags = np.ones(len(bands)) * 0.1
     mock_sigma = (mock_mjy * sigma_mags) / 1.0875
 
@@ -115,7 +115,7 @@ def ln_prior(theta):
 def ln_like(theta, obs_mjy, obs_sigma, sp, d, bands):
     """ln-likelihood function"""
     model_mags = sp.get_mags(tage=theta, bands=bands)
-    model_mjy = mags_to_mjy(model_mags, d)
+    model_mjy = ab_to_mjy(model_mags, d)
     L = -0.5 * np.sum(np.power((model_mjy - obs_mjy) / obs_sigma, 2.))
     return L
 
