@@ -4,6 +4,7 @@
 Tests for zinterp module.
 """
 
+import numpy as np
 from sedbot.zinterp import bracket_logz, interp_logz
 
 
@@ -13,10 +14,10 @@ def test_bottom_bracket_logz():
     zmet1, zmet2 = bracket_logz(ZZsol)
     assert zmet1 == 1 and zmet2 == 2
 
-    f1 = 2.
-    f2 = 4.
+    f1 = np.atleast_1d(2.)
+    f2 = np.atleast_1d(4.)
     f = interp_logz(zmet1, zmet2, ZZsol, f1, f2)
-    assert f == f1
+    assert f[0] == f1[0]
 
 
 def test_low_bracket_logz():
@@ -37,10 +38,10 @@ def test_high_bracket_logz():
     zmet1, zmet2 = bracket_logz(logZZsol)
     assert zmet1 == 21 and zmet2 == 22
 
-    f1 = 2.
-    f2 = 4.
+    f1 = np.atleast_1d(2.)
+    f2 = np.atleast_1d(4.)
     f = interp_logz(zmet1, zmet2, logZZsol, f1, f2)
-    assert f == f2
+    assert f[0] == f2[0]
 
 
 def test_super_solar_bracket():
