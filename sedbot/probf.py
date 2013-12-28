@@ -23,7 +23,7 @@ def ln_uniform_factory(lower, upper):
     func : function
         A function that accepts a random variable and returns the log of the
         uniform probability of that value. That is, an RV within the bounds has
-        a ln-probability of 0, and -infinity if outside the bounds.
+        a ln-probability of 0, and `-numpy.inf` if outside the bounds.
     """
     width = upper - lower
     def func(x):
@@ -35,7 +35,7 @@ def ln_uniform_factory(lower, upper):
     return func
 
 
-def ln_normal_factory(mu, sigma):
+def ln_normal_factory(mu, sigma, limits=None):
     """Log of normal prior probability factory.
 
     Parameters
@@ -44,15 +44,27 @@ def ln_normal_factory(mu, sigma):
         Lower bound of the log-normal probability distribution.
     upper : float
         Upper bound of the log-normal probability distribution.
+    limits : (2,) tuple (optional)
+        Hard lower and upper boundaries on the random variable.
 
     Returns
     -------
     func : function
         A function that accepts a random variable and returns the log-normal
-        probability of that value. That is, an RV within the bounds has a 
-        ln-probability of 0, and -infinity if outside the bounds.
+        probability of that value. If `limits` are set then an RV outside the
+        bounds has a ln-probability `-numpy.inf`.
     """
-    def func(x):
-        """Log of normal prior probability factory."""
-        return scipy.stats.norm.logpdf(x, loc=mu, scale=sigma)
-    return func
+    if limits:
+        lower, upper = limits
+        def f_limits(x):
+            """Log of normal prior probability with hard limits."""
+            if x >= lower and x <= upper:
+                return scipy.stats.norm.logpdf(x, loc=mu, scale=sigma)
+            else:
+                return -np.inf
+        return f_limits
+    else:
+        def f(x):
+            """Log of normal prior probability."""
+            return scipy.stats.norm.logpdf(x, loc=mu, scale=sigma)
+        return f
