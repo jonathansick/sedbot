@@ -1,10 +1,29 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-Utilities for setting up models.
+Utilities for setting up models and working with emcee samplers.
 """
 
 import time
+
+
+def burnin_flatchain(sampler, n_burn):
+    """Create a 'flatchain' of emcee walkers, removing the burn-in steps.
+    
+    Parameters
+    ----------
+    sampler : obj
+        An `emcee` sampler.
+    n_burn : int
+        Number of burn-in steps.
+
+    Returns
+    -------
+    flatchain : ndarray (nsteps, ndim)
+        The flattened chain with burn-in steps removed.
+    """
+    nwalkers, nsteps, ndim = sampler.chain.shape
+    return sampler.chain[:, n_burn:, :].reshape((-1, ndim))
 
 
 def reset_seed_limits(start_points, lower, upper):
