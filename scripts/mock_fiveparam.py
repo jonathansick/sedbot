@@ -9,12 +9,10 @@ import emcee
 import numpy as np
 import fsps
 
-from sedbot.photconv import ab_to_mjy
-from sedbot.zinterp import bracket_logz, interp_logz
 from sedbot.probf import ln_uniform_factory, ln_normal_factory
 import sedbot.models.fiveparam as fiveparam
 from sedbot.plots import chain_plot, triangle_plot, escape_latex
-from sedbot.modeltools import EmceeTimer, burnin_flatchain
+from sedbot.modeltools import EmceeTimer, burnin_flatchain, mock_dataset
 
 
 def main():
@@ -53,7 +51,8 @@ def main():
             ln_uniform_factory(*limits['dust2'])]
 
     # Generate Mock dataset
-    mock_mjy, mock_sigma = mock_dataset(sp, bands, d0, m0, logZZsol0)
+    mock_mjy, mock_sigma = mock_dataset(sp, bands, d0, m0, logZZsol0,
+            0.05, apply_errors=True)
 
     print "Running emcee"
     sampler = emcee.EnsembleSampler(n_walkers,
@@ -80,18 +79,6 @@ def main():
         truths=(m0, logZZsol0, d0, pset_true['tau'], pset_true['const'],
             pset_true['sf_start'], pset_true['tburst'], pset_true['fburst'],
             pset_true['dust2']))
-
-
-def mock_dataset(sp, bands, d0, m0, logZZsol):
-    zmet1, zmet2 = bracket_logz(logZZsol)
-    sp.params['zmet'] = zmet1
-    f1 = ab_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
-    sp.params['zmet'] = zmet2
-    f2 = ab_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
-    mock_mjy = interp_logz(zmet1, zmet2, logZZsol, f1, f2)
-    sigma_mags = np.ones(len(bands)) * 0.05
-    mock_sigma = (mock_mjy * sigma_mags) / 1.0875
-    return mock_mjy, mock_sigma
 
 
 if __name__ == '__main__':
