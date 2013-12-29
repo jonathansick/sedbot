@@ -64,8 +64,11 @@ version = sedbot.__version__.split('-', 1)[0]
 # The full version, including alpha/beta/rc tags.
 release = sedbot.__version__
 
-
 # -- Options for HTML output ---------------------------------------------------
+
+html_theme_options = {'logotext1': 'sed',
+    'logotext2': 'bot',
+    'logotext3': ':docs'}
 
 # A NOTE ON HTML THEMES
 # The global astropy configuration uses a custom theme, 'bootstrap-astropy',
