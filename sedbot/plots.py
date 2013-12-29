@@ -48,8 +48,7 @@ def chain_plot(path, sampler, param_names, limits):
         ax.set_xlim(steps.min(), steps.max())
         if limits is not None and name in limits:
             ax.set_ylim(*limit)
-        name_clean = name.replace("_", "\_")
-        ax.set_ylabel(name_clean)
+        ax.set_ylabel(name)
         axes[name] = ax
         if i < ndim - 1:
             for tl in ax.get_xmajorticklabels():
@@ -88,8 +87,7 @@ def triangle_plot(path, samples, param_names, limits,
     """
     from triangle import corner
     _prep_plot_dir(path)
-    clean_labels = [l.replace("_", "\_") for l in param_names]
-    fig = corner(samples, labels=clean_labels, extents=limits, truths=truths,
+    fig = corner(samples, labels=param_names, extents=limits, truths=truths,
             truth_color="#4682b4", scale_hist=False, quantiles=[],
             verbose=True, plot_contours=True, plot_datapoints=True,
             fig=None)
@@ -100,3 +98,17 @@ def _prep_plot_dir(path):
     plotdir = os.path.dirname(path)
     if len(plotdir) > 0 and not os.path.exists(plotdir):
         os.makedirs(plotdir)
+
+
+def escape_latex(text):
+    """Escape a string for matplotlib latex processing.
+    
+    Run this function on any FSPS parameter names before passing to the
+    plotting functions in this module as axis labels.
+    
+    Parameters
+    ----------
+    text : str
+        String to escape.
+    """
+    return text.replace("_", "\_")
