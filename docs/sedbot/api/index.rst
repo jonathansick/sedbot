@@ -5,6 +5,7 @@ API Documentation
    :maxdepth: 2
 
    modeltools
+   plots
    photconv
    probf
    zinterp

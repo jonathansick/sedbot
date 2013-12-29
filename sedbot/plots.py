@@ -11,7 +11,25 @@ import matplotlib.gridspec as gridspec
 
 
 def chain_plot(path, sampler, param_names, limits):
-    """docstring for chain_plot"""
+    """Diagnostic plot of walker chains.
+    
+    The chain plot shows lineplots of each walker, for each parameter. This
+    plot can be useful for assessing convergence, and establishing an
+    appropriate burn-in limit.
+
+    Parameters
+    ----------
+    path : str
+        Path where the chain plot will be saved (as a PDF file).
+    sampler : obj
+        An emcee sampler instance.
+    param_names : list
+        Sequence of strings identifying each parameter
+    limits : list (ndim)
+        Sequence of `(lower, upper)` tuples defining the extent of each
+        parameter. Must be the same length and order as `param_names` and
+        parameters in the sampler's chain.
+    """
     _prep_plot_dir(path)
 
     nwalkers, nsteps, ndim = sampler.chain.shape
@@ -50,6 +68,23 @@ def triangle_plot(path, samples, param_names, limits,
     distributions and covariances between parameters.
 
     samples = sampler.chain[:, nburn:, :].reshape((-1, ndim))
+
+    Parameters
+    ----------
+    path : str
+        Path where the corner plot will be saved (as a PDF file).
+    samples : ndarray (nsteps, ndim)
+        A flattened chain of emcee samples. To obtain a flat chain with
+        burn-in steps removed, use
+        `samples = sampler.chain[:, nburn:, :].reshape((-1, ndim))`
+    param_names : list (ndim,)
+        Sequence of strings identifying each parameter
+    limits : list (ndim,)
+        Sequence of `(lower, upper)` tuples defining the extent of each
+        parameter. Must be the same length and order as `param_names` and
+        parameters in the sampler's chain.
+    truths : list (ndim,)
+        True values for each parameter.
     """
     from triangle import corner
     _prep_plot_dir(path)
