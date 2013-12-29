@@ -1,7 +1,14 @@
+.. image:: ../_static/sedbot_logo.svg
+   :width: 100%
+
+
 The sedbot Documentation
 ========================
 
 This is the documentation for sedbot, a Python package for modelling stellar populations (SEDs) using FSPS and emcee.
+
+Contents
+--------
 
 .. toctree::
   :maxdepth: 2
