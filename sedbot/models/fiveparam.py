@@ -55,5 +55,12 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
     """ln-probability function"""
     prior_p = sum(lnp(x) for x, lnp in zip(theta, prior_funcs))
     if not np.isfinite(prior_p):
-        return -np.inf
-    return prior_p + ln_like(theta, obs_mjy, obs_sigma, bands, sp)
+        return -np.inf, 0.
+    lnpost = prior_p + ln_like(theta, obs_mjy, obs_sigma, bands, sp)
+    # Scale statistics by the total mass
+    m_star = theta[0] * sp.log_mass  # FIXME not log
+    m_dust = theta[0] * sp.log_mdust  # FIXME not log
+    lbol = theta[0] * sp.log_lbol  # FIXME, not log
+    sfr = theta[0] * sp.log_sfr  # FIXME not log
+    age = sp.log_age  # FIXME not log
+    return lnpost, (m_star, m_dust, lbol, sfr, age)

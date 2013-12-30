@@ -92,23 +92,54 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
     return mock_mjy, mock_sigma
 
 
-def burnin_flatchain(sampler, n_burn):
+def burnin_flatchain(sampler, n_burn, append_mstar=False, append_mdust=False,
+        append_lbol=False, append_sfr=False, append_age=False):
     """Create a 'flatchain' of emcee walkers, removing the burn-in steps.
-    
+
+    Optionally, :func:`burnin_flatchain` can also append stellar population
+    stats (returned by the posterior probability function as emcee 'blobs').
+    Without appended stellar population statistics, the flatchain has a
+    shape of ``(nsteps, ndim)``. Statistics are appended to the end of the
+    ``ndim`` axis in the order of:
+
+    1. ``mstar``
+    2. ``mdust``
+    3. ``lbol``
+    4. ``sfr``
+    5. ``age``
+
     Parameters
     ----------
     sampler : obj
         An `emcee` sampler.
     n_burn : int
         Number of burn-in steps.
+    append_mstar : bool
+        Append stellar mass to the chain.
+    append_mdust : bool
+        Append dust mass to the chain.
+    append_lbol : bool
+        Append bolometric luminosity to the chain.
+    append_sfr : bool
+        Append the star formation rate to the chain.
 
     Returns
     -------
     flatchain : ndarray (nsteps, ndim)
-        The flattened chain with burn-in steps removed.
+        The flattened chain with burn-in steps removed and (if applicable)
+        stellar population metadata appended.
     """
     nwalkers, nsteps, ndim = sampler.chain.shape
-    return sampler.chain[:, n_burn:, :].reshape((-1, ndim))
+    flatchain = sampler.chain[:, n_burn:, :].reshape((-1, ndim))
+    append_opts = [append_mstar, append_mdust, append_lbol, append_sfr,
+        append_age]
+    if True in append_opts:
+        blobs = np.array(sampler.blobs)
+        blobs = np.swapaxes(blobs, 0, 1) # n_walkers, n_steps, 5, match chain
+        flatblobs = blobs[:, n_burn:, :].reshape((-1, 5))
+        indices = [i for i, ap in enumerate(append_opts) if ap]
+        flatchain = np.hstack((flatchain, flatblobs[:, indices]))
+    return flatchain
 
 
 def reset_seed_limits(start_points, lower, upper):

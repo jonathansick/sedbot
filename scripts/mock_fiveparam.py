@@ -19,9 +19,9 @@ from sedbot.modeltools import EmceeTimer, burnin_flatchain, mock_dataset, \
 def main():
     print "Initializing SP"
     # Setup chain parameters
-    n_walkers = 16 * fiveparam.NDIM
+    n_walkers = 32 * fiveparam.NDIM
     n_steps = 100
-    n_burn = 30  # burn-in of 30 steps
+    n_burn = 50  # burn-in of 30 steps
 
     # Define the mock model
     bands = ['SDSS_u', 'SDSS_g', 'SDSS_r', 'SDSS_i']
@@ -29,7 +29,8 @@ def main():
     d0_sigma = 25. * 1000.
     m0 = 1. # total stellar mass
     logZZsol0 = -0.1
-    pset_true = {'compute_vega_mags': False,
+    pset_true = {'compute_vega_mags': False,  # use AB mags
+            # 'add_stellar_remnants': 0,  # for stellar mass calculation
             'tau': 5., 'const': 0.1, 'sf_start': 0.5,
             'tburst': 11., 'fburst': 0.05, 'dust2': 0.2}
     # Initialize FSPS
@@ -80,17 +81,20 @@ def main():
     for name, ac in zip(param_names, sampler.acor):
         print "\t%s %.1f" % (name, ac)
 
+    flatchain = burnin_flatchain(sampler, n_burn, append_mstar=True,
+            append_mdust=True)
+
     chain_plot("chain", sampler,
         [escape_latex(n) for n in param_names],
         [limits[n] for n in param_names])
     triangle_plot("triangle",
-        burnin_flatchain(sampler, n_burn),
-        [escape_latex(n) for n in param_names],
-        [limits[n] for n in param_names],
+        flatchain,
+        [escape_latex(n) for n in param_names] + [r"$M_*$", r"$M_d$"],
+        [limits[n] for n in param_names] + [(0.5, 1.5), (0.0, 0.5)],
         figsize=(5, 5),
         truths=(m0, logZZsol0, d0, pset_true['tau'], pset_true['const'],
             pset_true['sf_start'], pset_true['tburst'], pset_true['fburst'],
-            pset_true['dust2']))
+            pset_true['dust2'], None, None))
 
 
 if __name__ == '__main__':
