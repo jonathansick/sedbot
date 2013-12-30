@@ -12,6 +12,36 @@ from sedbot.photconv import ab_to_mjy
 from sedbot.zinterp import bracket_logz, interp_logz
 
 
+def init_chain(n_walkers, x0, x_sigma, limits):
+    """Init chain position given the number of walkers.
+    
+    Parameters
+    ----------
+    n_walkers : int
+        Number of `emcee` walkers.
+    x0 : length-ndim iterable
+        List of initial guesses for each parameter
+    x_sigma : length-ndim iterable
+        List of dispersions around initial guesses to start chains from.
+    limits : length-ndim iterable
+        List of length-2 tuples giving the lower and upper bounds of each
+        parameter. This ensures that each chain is initialized in a valid
+        point of parameter space.
+
+    Returns
+    -------
+    p0 : (n_walkers, n_dim) ndarray
+        Initial position for the emcee chain.
+    """
+    ndim = len(x0)
+    assert len(x0) == len(x_sigma) == len(limits), "Lengths do not match"
+    p0 = np.random.randn(ndim * n_walkers).reshape((n_walkers, ndim))
+    for i, (x, sigma, lim) in enumerate(zip(x0, x_sigma, limits)):
+        p0[:, i] = sigma * p0[:, i] + x
+        reset_seed_limits(p0[:, i], *lim)
+    return p0
+
+
 def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
     """Generate a mock SED given the FSPS stellar population model.
     

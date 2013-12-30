@@ -22,75 +22,10 @@ In this model, MCMC sampling is done for each of these nine parameters.
 import numpy as np
 
 from sedbot.photconv import ab_to_mjy
-from sedbot.modeltools import reset_seed_limits
 from sedbot.zinterp import bracket_logz, interp_logz
 
 # Number of model dimensions
 NDIM = 9
-
-
-def init_chain(n_walkers, d0, m0, limits, **pset):
-    """Init chain position given the number of walkers.
-    
-    Parameters
-    ----------
-    n_walkers : int
-        Number of `emcee` walkers.
-    d0 : float
-        Initial guess at the distance in parsecs
-    m0 : float
-        Initial guess at mass.
-    limits : dict
-        Dictionary of lower and upper bounds of each parameter.
-    """
-    p0 = np.random.randn(NDIM * n_walkers).reshape((n_walkers, NDIM))
-
-    # mass start point
-    p0[:, 0] = p0[:, 0] + m0
-    if 'mass' in limits:
-        reset_seed_limits(p0[:, 0], *limits['mass'])
-
-    # metallicity start point
-    p0[:, 1] = 0.1 * p0[:, 1] - 0.
-    if 'logZZsol' in limits:
-        reset_seed_limits(p0[:, 1], *limits['logZZsol'])
-
-    # distance start point
-    p0[:, 2] = 10. * p0[:, 2] + d0
-    if 'd' in limits:
-        reset_seed_limits(p0[:, 2], *limits['d'])
-
-    # tau start point
-    p0[:, 3] = p0[:, 3] + 10.
-    if 'tau' in limits:
-        reset_seed_limits(p0[:, 3], *limits['tau'])
-
-    # const start point
-    p0[:, 4] = p0[:, 4] + 2.
-    if 'const' in limits:
-        reset_seed_limits(p0[:, 4], *limits['const'])
-
-    # sf_start start point
-    p0[:, 5] = p0[:, 5] + 2.
-    if 'sf_start' in limits:
-        reset_seed_limits(p0[:, 5], *limits['sf_start'])
-
-    # tburst start point
-    p0[:, 6] = p0[:, 6] + 6.
-    if 'tburst' in limits:
-        reset_seed_limits(p0[:, 6], *limits['tburst'])
-
-    # fburst start point
-    p0[:, 7] = 0.1 * p0[:, 7] + 0.2
-    if 'fburst' in limits:
-        reset_seed_limits(p0[:, 7], *limits['fburst'])
-
-    # dust2 attenuation start point
-    p0[:, 8] = 0.1 * p0[:, 8] + 0.2
-    if 'dust2' in limits:
-        reset_seed_limits(p0[:, 8], *limits['dust2'])
-
-    return p0
 
 
 def ln_like(theta, obs_mjy, obs_sigma, bands, sp):
