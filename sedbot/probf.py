@@ -39,7 +39,10 @@ def ln_loguniform_factory(lower, upper):
     return func
 
 def ln_uniform_factory(lower, upper):
-    """Log of uniform prior probability factory.
+    r"""Log of uniform prior probability factory.
+
+    .. math::
+       \ln p(x|x_1, x_2) = \ln \frac{1}{x_2 - x_1}
     
     Parameters
     ----------
@@ -66,7 +69,11 @@ def ln_uniform_factory(lower, upper):
 
 
 def ln_normal_factory(mu, sigma, limits=None):
-    """Log of normal prior probability factory.
+    r"""Log of normal prior probability factory.
+
+    .. math::
+       \ln p(x|\mu, \sigma) = \ln \frac{1}{\sqrt{2 \pi \sigma^2}} 
+       e^{- \left( \frac{x - \mu}{2 \pi \sigma^2} \right)}
 
     Parameters
     ----------
