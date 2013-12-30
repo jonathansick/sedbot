@@ -8,8 +8,11 @@ import numpy as np
 import scipy.stats
 
 
-def ln_uniform_factory(lower, upper):
-    """Log of uniform prior probability factory.
+def ln_loguniform_factory(lower, upper):
+    r"""Log of log-uniform prior probability factory.
+
+    .. math::
+       \ln p(x|x_1, x_2) = \ln \frac{1}{x \ln \left( x_1 / x_2 \right)}
     
     Parameters
     ----------
@@ -22,8 +25,35 @@ def ln_uniform_factory(lower, upper):
     -------
     func : function
         A function that accepts a random variable and returns the log of the
-        uniform probability of that value. That is, an RV within the bounds has
-        a ln-probability of 0, and `-numpy.inf` if outside the bounds.
+        log-uniform probability of that value.
+        Returns `-numpy.inf` if the RV is outside bounds.
+    """
+    factor = 1. / np.log(upper / lower)
+    assert np.isfinite(factor), "log-uniform prior not finite"
+    def func(x):
+        """Log of uniform prior probability."""
+        if x >= lower and x <= upper:
+            return np.log(factor / x)
+        else:
+            return -np.inf
+    return func
+
+def ln_uniform_factory(lower, upper):
+    """Log of uniform prior probability factory.
+    
+    Parameters
+    ----------
+    lower : float
+        Lower bound of the uniform probability distribution.
+    upper : float
+        Upper bound of the uniform probability distribution.
+
+    Returns
+    -------
+    func : function
+        A function that accepts a random variable and returns the log of the
+        uniform probability of that value.
+        Returns `-numpy.inf` if the RV is outside bounds.
     """
     width = upper - lower
     def func(x):
