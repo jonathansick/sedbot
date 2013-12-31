@@ -58,9 +58,9 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
         return -np.inf, 0.
     lnpost = prior_p + ln_like(theta, obs_mjy, obs_sigma, bands, sp)
     # Scale statistics by the total mass
-    m_star = theta[0] * sp.log_mass  # FIXME not log
-    m_dust = theta[0] * sp.log_mdust  # FIXME not log
-    lbol = theta[0] * sp.log_lbol  # FIXME, not log
-    sfr = theta[0] * sp.log_sfr  # FIXME not log
-    age = sp.log_age  # FIXME not log
+    m_star = theta[0] * sp.stellar_mass  # solar masses
+    m_dust = theta[0] * sp.dust_mass  # solar masses
+    lbol = theta[0] * 10. ** sp.log_lbol  # solar luminosities
+    sfr = theta[0] * sp.sfr  # star formation rate, M_sun / yr
+    age = sp.log_age  # log(age / yr)
     return lnpost, (m_star, m_dust, lbol, sfr, age)
