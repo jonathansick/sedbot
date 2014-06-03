@@ -6,7 +6,7 @@ metallicity and attenuation as additional parameters).
 
 Model components are:
 
-1. `mass`: solar masses
+1. `logmass`: log10 solar mass
 2. `log(Z/Z_sol)`: logarithmic metallicity
 3. `d`: distance in parsecs
 4. `tau`: e-folding time
@@ -30,7 +30,7 @@ NDIM = 9
 
 def ln_like(theta, obs_mjy, obs_sigma, bands, sp):
     """ln-likelihood function"""
-    m = theta[0]
+    logm = theta[0]  # logmass
     logZZsol = theta[1]
     d = theta[2]
     sp.params['tau'] = theta[3]
@@ -47,7 +47,8 @@ def ln_like(theta, obs_mjy, obs_sigma, bands, sp):
     sp.params['zmet'] = zmet2
     f2 = ab_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
     model_mjy = interp_logz(zmet1, zmet2, logZZsol, f1, f2)
-    L = -0.5 * np.sum(np.power((m * model_mjy - obs_mjy) / obs_sigma, 2.))
+    L = -0.5 * np.sum(
+        np.power((10. ** logm * model_mjy - obs_mjy) / obs_sigma, 2.))
     return L
 
 
@@ -58,9 +59,9 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
         return -np.inf, 0.
     lnpost = prior_p + ln_like(theta, obs_mjy, obs_sigma, bands, sp)
     # Scale statistics by the total mass
-    m_star = theta[0] * sp.stellar_mass  # solar masses
-    m_dust = theta[0] * sp.dust_mass  # solar masses
-    lbol = theta[0] * 10. ** sp.log_lbol  # solar luminosities
-    sfr = theta[0] * sp.sfr  # star formation rate, M_sun / yr
-    age = sp.log_age  # log(age / yr)
-    return lnpost, (m_star, m_dust, lbol, sfr, age)
+    log_m_star = theta[0] + np.log10(sp.stellar_mass)  # log solar masses
+    log_m_dust = theta[0] + np.log10(sp.dust_mass)  # log solar masses
+    log_lbol = theta[0] * sp.log_lbol  # log solar luminosities
+    log_sfr = theta[0] * np.log10(sp.sfr)  # star formation rate, M_sun / yr
+    log_age = sp.log_age  # log(age / yr)
+    return lnpost, (log_m_star, log_m_dust, log_lbol, log_sfr, log_age)
