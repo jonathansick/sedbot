@@ -92,15 +92,20 @@ except ImportError: # compatibility with Astropy 0.2 - can be removed in cases
     # data.  See the docstring for setup_helpers.update_package_files for
     # more details.
     update_package_files(PACKAGENAME, package_info['ext_modules'],
-                         package_info['package_data'], package_info['packages'],
+                         package_info['package_data'],
+                         package_info['packages'],
                          package_info['package_dir'])
 
 setup(name=PACKAGENAME,
       version=VERSION,
       description=DESCRIPTION,
       scripts=scripts,
-      requires=['astropy'],
-      install_requires=['astropy'],
+      # requires=['astropy'],
+      install_requires=['astropy',
+                        'cython',
+                        'matplotlib',
+                        'emcee',
+                        'triangle_plot'],
       provides=[PACKAGENAME],
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
@@ -110,5 +115,4 @@ setup(name=PACKAGENAME,
       cmdclass=cmdclassd,
       zip_safe=False,
       use_2to3=True,
-      **package_info
-)
+      **package_info)
