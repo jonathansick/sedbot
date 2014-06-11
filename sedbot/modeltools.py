@@ -8,7 +8,7 @@ import time
 import numpy as np
 
 
-from sedbot.photconv import ab_to_mjy
+from sedbot.photconv import abs_ab_mag_to_mjy
 from sedbot.zinterp import bracket_logz, interp_logz
 
 
@@ -78,9 +78,9 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
     """
     zmet1, zmet2 = bracket_logz(logZZsol)
     sp.params['zmet'] = zmet1
-    f1 = ab_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
+    f1 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
     sp.params['zmet'] = zmet2
-    f2 = ab_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
+    f2 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
     mock_mjy = interp_logz(zmet1, zmet2, logZZsol, f1, f2)
     if isinstance(mag_sigma, float):
         mag_sigma = np.ones(len(bands)) * mag_sigma
@@ -88,12 +88,12 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
     if apply_errors:
         nbands = len(bands)
         mock_mjy += mock_sigma * np.random.normal(loc=0.0, scale=1.0,
-                size=nbands)
+                                                  size=nbands)
     return mock_mjy, mock_sigma
 
 
 def burnin_flatchain(sampler, n_burn, append_mstar=False, append_mdust=False,
-        append_lbol=False, append_sfr=False, append_age=False):
+                     append_lbol=False, append_sfr=False, append_age=False):
     """Create a 'flatchain' of emcee walkers, removing the burn-in steps.
 
     Optionally, :func:`burnin_flatchain` can also append stellar population
@@ -132,10 +132,10 @@ def burnin_flatchain(sampler, n_burn, append_mstar=False, append_mdust=False,
     nwalkers, nsteps, ndim = sampler.chain.shape
     flatchain = sampler.chain[:, n_burn:, :].reshape((-1, ndim))
     append_opts = [append_mstar, append_mdust, append_lbol, append_sfr,
-        append_age]
+                   append_age]
     if True in append_opts:
         blobs = np.array(sampler.blobs)
-        blobs = np.swapaxes(blobs, 0, 1) # n_walkers, n_steps, 5, match chain
+        blobs = np.swapaxes(blobs, 0, 1)  # n_walkers, n_steps, 5, match chain
         flatblobs = blobs[:, n_burn:, :].reshape((-1, 5))
         indices = [i for i, ap in enumerate(append_opts) if ap]
         flatchain = np.hstack((flatchain, flatblobs[:, indices]))
@@ -208,7 +208,8 @@ class EmceeTimer(object):
         l2 = "\tRun time: {dt} {unit}"
         l3 = "\t{ct} {cunit} per call"
         return "\n".join((l1, l2, l3)).format(dt=dt, unit=unit,
-                ct=ct, cunit=cunit, enddate=enddate)
+                                              ct=ct, cunit=cunit,
+                                              enddate=enddate)
 
     def _human_time(self, interval):
         """Return a time interval scaled to human-usable units."""

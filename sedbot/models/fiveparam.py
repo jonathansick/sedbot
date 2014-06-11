@@ -21,7 +21,7 @@ In this model, MCMC sampling is done for each of these nine parameters.
 
 import numpy as np
 
-from sedbot.photconv import ab_to_mjy
+from sedbot.photconv import abs_ab_mag_to_mjy
 from sedbot.zinterp import bracket_logz, interp_logz
 
 # Number of model dimensions
@@ -42,10 +42,10 @@ def ln_like(theta, obs_mjy, obs_sigma, bands, sp):
     zmet1, zmet2 = bracket_logz(logZZsol)
     # Compute fluxes with low metallicity
     sp.params['zmet'] = zmet1
-    f1 = ab_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
+    f1 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
     # Compute fluxes with high metallicity
     sp.params['zmet'] = zmet2
-    f2 = ab_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
+    f2 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
     model_mjy = interp_logz(zmet1, zmet2, logZZsol, f1, f2)
     L = -0.5 * np.sum(
         np.power((10. ** logm * model_mjy - obs_mjy) / obs_sigma, 2.))
