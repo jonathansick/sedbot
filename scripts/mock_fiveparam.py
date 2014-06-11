@@ -12,7 +12,7 @@ import fsps
 from sedbot.probf import ln_uniform_factory, ln_normal_factory
 import sedbot.models.fiveparam as fiveparam
 from sedbot.plots import chain_plot, triangle_plot, escape_latex
-from sedbot.modeltools import EmceeTimer, burnin_flatchain, mock_dataset, \
+from sedbot.modeltools import EmceeTimer, make_flatchain, mock_dataset, \
     init_chain
 
 
@@ -89,7 +89,7 @@ def main():
     for name, ac in zip(param_names, sampler.acor):
         print("\t%s %.1f" % (name, ac))
 
-    flatchain = burnin_flatchain(sampler, n_burn, append_mstar=True,
+    flatchain = make_flatchain(sampler, n_burn, append_mstar=True,
                                  append_mdust=True)
 
     chain_plot("chain", sampler,

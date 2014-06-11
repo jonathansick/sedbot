@@ -94,11 +94,11 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
     return mock_mjy, mock_sigma
 
 
-def burnin_flatchain(sampler, n_burn, append_mstar=False, append_mdust=False,
-                     append_lbol=False, append_sfr=False, append_age=False):
-    """Create a 'flatchain' of emcee walkers, removing the burn-in steps.
+def make_flatchain(sampler, n_burn=0, append_mstar=False, append_mdust=False,
+                   append_lbol=False, append_sfr=False, append_age=False):
+    """Create a 'flatchain' of emcee walkers, removing any burn-in steps.
 
-    Optionally, :func:`burnin_flatchain` can also append stellar population
+    Optionally, :func:`make_flatchain` can also append stellar population
     stats (returned by the posterior probability function as emcee 'blobs').
     Without appended stellar population statistics, the flatchain has a
     shape of ``(nsteps, ndim)``. Statistics are appended to the end of the
@@ -144,17 +144,20 @@ def burnin_flatchain(sampler, n_burn, append_mstar=False, append_mdust=False,
     return flatchain
 
 
-def burnin_flatchain_table(sampler, n_burn, param_names, **kwargs):
-    """Create an Astropy Table of 'flatchain' of emcee walkers, removing the
+def make_flatchain_table(sampler, param_names, **kwargs):
+    """Create an Astropy Table of 'flatchain' of emcee walkers, removing any
     burn-in steps.
 
-    This function works identically to :func:`burnin_flatchain`, except that
+    This function works identically to :func:`make_flatchain`, except that
     the result is an astropy Table instance, with properly named columns.
 
     Parameters
     ----------
     sampler : obj
         An `emcee` sampler.
+    param_names : list
+        List of strings identifying each parameter, and thus columns in
+        the table.
     n_burn : int
         Number of burn-in steps.
     param_names : str
@@ -174,7 +177,7 @@ def burnin_flatchain_table(sampler, n_burn, param_names, **kwargs):
         The flattened chain as an astropy Table with burn-in steps removed and
         (if applicable) stellar population metadata appended.
     """
-    flatchain = burnin_flatchain(sampler, n_burn, **kwargs)
+    flatchain = make_flatchain(sampler, **kwargs)
     colnames = list(param_names)
     if 'append_mstar' in kwargs and kwargs['append_mstar']:
         colnames.append('logMstar')
