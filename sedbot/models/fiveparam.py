@@ -28,8 +28,28 @@ from sedbot.zinterp import bracket_logz, interp_logz
 NDIM = 9
 
 
-def ln_like(theta, obs_mjy, obs_sigma, bands, sp):
-    """ln-likelihood function"""
+def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
+    """ln-probability function
+    
+    Returns
+    -------
+    lnpost : float
+        Posterior probability value
+    blob : tuple
+        FSPS metadata for this likelihood call. Includes data on stellar mass,
+        dust mass, as well as the modelled SED (in µJy).
+    """
+    # Placeholders for metadata at high and low metallicity brackets
+    meta1 = np.empty(5)
+    meta2 = np.empty(5)
+
+    # Evaluate priors
+    prior_p = sum(lnp(x) for x, lnp in zip(theta, prior_funcs))
+    if not np.isfinite(prior_p):
+        return -np.inf, 0.
+
+    # Evaluate the ln-likelihood function by interpolating between metallicty
+    # bracket
     logm = theta[0]  # logmass
     logZZsol = theta[1]
     d = theta[2]
@@ -43,25 +63,34 @@ def ln_like(theta, obs_mjy, obs_sigma, bands, sp):
     # Compute fluxes with low metallicity
     sp.params['zmet'] = zmet1
     f1 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
+    meta1[0] = sp.stellar_mass
+    meta1[1] = sp.dust_mass
+    meta1[2] = sp.log_lbol
+    meta1[3] = sp.sfr
+    meta1[4] = sp.log_age
     # Compute fluxes with high metallicity
     sp.params['zmet'] = zmet2
     f2 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
+    meta2[0] = sp.stellar_mass
+    meta2[1] = sp.dust_mass
+    meta2[2] = sp.log_lbol
+    meta2[3] = sp.sfr
+    meta2[4] = sp.log_age
     model_mjy = interp_logz(zmet1, zmet2, logZZsol, f1, f2)
+    meta = interp_logz(zmet1, zmet2, logZZsol, meta1, meta2)
+
     L = -0.5 * np.sum(
         np.power((10. ** logm * model_mjy - obs_mjy) / obs_sigma, 2.))
-    return L
 
+    # Compute ln posterior probability
+    # L, model_sed = ln_like(theta, obs_mjy, obs_sigma, bands, sp)
+    lnpost = prior_p + L
 
-def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
-    """ln-probability function"""
-    prior_p = sum(lnp(x) for x, lnp in zip(theta, prior_funcs))
-    if not np.isfinite(prior_p):
-        return -np.inf, 0.
-    lnpost = prior_p + ln_like(theta, obs_mjy, obs_sigma, bands, sp)
     # Scale statistics by the total mass
-    log_m_star = theta[0] + np.log10(sp.stellar_mass)  # log solar masses
-    log_m_dust = theta[0] + np.log10(sp.dust_mass)  # log solar masses
-    log_lbol = theta[0] * sp.log_lbol  # log solar luminosities
-    log_sfr = theta[0] * np.log10(sp.sfr)  # star formation rate, M_sun / yr
-    log_age = sp.log_age  # log(age / yr)
-    return lnpost, (log_m_star, log_m_dust, log_lbol, log_sfr, log_age)
+    log_m_star = theta[0] + np.log10(meta[0])  # log solar masses
+    log_m_dust = theta[0] + np.log10(meta[1])  # log solar masses
+    log_lbol = theta[0] * meta[2]  # log solar luminosities
+    log_sfr = theta[0] * meta[3]  # star formation rate, M_sun / yr
+    log_age = meta[4]  # log(age / yr)
+    blob = (log_m_star, log_m_dust, log_lbol, log_sfr, log_age, model_mjy)
+    return lnpost, blob

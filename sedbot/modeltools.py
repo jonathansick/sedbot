@@ -95,7 +95,8 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
 
 
 def make_flatchain(sampler, n_burn=0, append_mstar=False, append_mdust=False,
-                   append_lbol=False, append_sfr=False, append_age=False):
+                   append_lbol=False, append_sfr=False, append_age=False,
+                   append_model_sed=False):
     """Create a 'flatchain' of emcee walkers, removing any burn-in steps.
 
     Optionally, :func:`make_flatchain` can also append stellar population
@@ -109,6 +110,7 @@ def make_flatchain(sampler, n_burn=0, append_mstar=False, append_mdust=False,
     3. ``lbol``
     4. ``sfr``
     5. ``age``
+    6. ``model_sed``
 
     Parameters
     ----------
@@ -124,6 +126,9 @@ def make_flatchain(sampler, n_burn=0, append_mstar=False, append_mdust=False,
         Append bolometric luminosity to the chain.
     append_sfr : bool
         Append the star formation rate to the chain.
+    append_model_sed : bool
+        Append the model SED (units of µJy); an array with modelled
+        fluxes in each bandpass.
 
     Returns
     -------
@@ -134,11 +139,13 @@ def make_flatchain(sampler, n_burn=0, append_mstar=False, append_mdust=False,
     nwalkers, nsteps, ndim = sampler.chain.shape
     flatchain = sampler.chain[:, n_burn:, :].reshape((-1, ndim))
     append_opts = [append_mstar, append_mdust, append_lbol, append_sfr,
-                   append_age]
+                   append_age, append_model_sed]
     if True in append_opts:
         blobs = np.array(sampler.blobs)
-        blobs = np.swapaxes(blobs, 0, 1)  # n_walkers, n_steps, 5, match chain
-        flatblobs = blobs[:, n_burn:, :].reshape((-1, 5))
+        print "blobs.shape", blobs.shape
+        print "blobs.dtype", blobs.dtype
+        blobs = np.swapaxes(blobs, 0, 1)  # n_walkers, n_steps, 6, match chain
+        flatblobs = blobs[:, n_burn:, :].reshape((-1, 6))
         indices = [i for i, ap in enumerate(append_opts) if ap]
         flatchain = np.hstack((flatchain, flatblobs[:, indices]))
     return flatchain
@@ -172,6 +179,9 @@ def make_flatchain_table(sampler, param_names, metadata=None, **kwargs):
         Append bolometric luminosity to the chain.
     append_sfr : bool
         Append the star formation rate to the chain.
+    append_model_sed : bool
+        Append the model SED (units of µJy); an array with modelled
+        fluxes in each bandpass.
 
     Returns
     -------
@@ -189,6 +199,8 @@ def make_flatchain_table(sampler, param_names, metadata=None, **kwargs):
         colnames.append('logLbol')
     if 'append_sfr' in kwargs and kwargs['append_sfr']:
         colnames.append('logsfr')
+    if 'append_model_sed' in kwargs and kwargs['append_model_sed']:
+        colnames.append('modelsed')
     tbl = Table(flatchain, names=colnames, meta=metadata)
     return tbl
 
