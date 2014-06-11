@@ -144,7 +144,7 @@ def make_flatchain(sampler, n_burn=0, append_mstar=False, append_mdust=False,
     return flatchain
 
 
-def make_flatchain_table(sampler, param_names, **kwargs):
+def make_flatchain_table(sampler, param_names, metadata=None, **kwargs):
     """Create an Astropy Table of 'flatchain' of emcee walkers, removing any
     burn-in steps.
 
@@ -158,6 +158,8 @@ def make_flatchain_table(sampler, param_names, **kwargs):
     param_names : list
         List of strings identifying each parameter, and thus columns in
         the table.
+    metadata : dict
+        Optional dictonary of metadata to persist with the table.
     n_burn : int
         Number of burn-in steps.
     param_names : str
@@ -187,7 +189,7 @@ def make_flatchain_table(sampler, param_names, **kwargs):
         colnames.append('logLbol')
     if 'append_sfr' in kwargs and kwargs['append_sfr']:
         colnames.append('logsfr')
-    tbl = Table(flatchain, names=colnames)
+    tbl = Table(flatchain, names=colnames, meta=metadata)
     return tbl
 
 
