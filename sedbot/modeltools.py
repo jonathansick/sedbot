@@ -94,69 +94,12 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
     return mock_mjy, mock_sigma
 
 
-def make_flatchain(sampler, n_burn=0, append_mstar=False, append_mdust=False,
+def make_flatchain(sampler, param_names, bands, metadata=None,
+                   n_burn=0, append_mstar=False, append_mdust=False,
                    append_lbol=False, append_sfr=False, append_age=False,
                    append_model_sed=False):
-    """Create a 'flatchain' of emcee walkers, removing any burn-in steps.
-
-    Optionally, :func:`make_flatchain` can also append stellar population
-    stats (returned by the posterior probability function as emcee 'blobs').
-    Without appended stellar population statistics, the flatchain has a
-    shape of ``(nsteps, ndim)``. Statistics are appended to the end of the
-    ``ndim`` axis in the order of:
-
-    1. ``mstar``
-    2. ``mdust``
-    3. ``lbol``
-    4. ``sfr``
-    5. ``age``
-    6. ``model_sed``
-
-    Parameters
-    ----------
-    sampler : obj
-        An `emcee` sampler.
-    n_burn : int
-        Number of burn-in steps.
-    append_mstar : bool
-        Append stellar mass to the chain.
-    append_mdust : bool
-        Append dust mass to the chain.
-    append_lbol : bool
-        Append bolometric luminosity to the chain.
-    append_sfr : bool
-        Append the star formation rate to the chain.
-    append_model_sed : bool
-        Append the model SED (units of µJy); an array with modelled
-        fluxes in each bandpass.
-
-    Returns
-    -------
-    flatchain : ndarray (nsteps, ndim)
-        The flattened chain with burn-in steps removed and (if applicable)
-        stellar population metadata appended.
-    """
-    nwalkers, nsteps, ndim = sampler.chain.shape
-    flatchain = sampler.chain[:, n_burn:, :].reshape((-1, ndim))
-    append_opts = [append_mstar, append_mdust, append_lbol, append_sfr,
-                   append_age, append_model_sed]
-    if True in append_opts:
-        blobs = np.array(sampler.blobs)
-        print "blobs.shape", blobs.shape
-        print "blobs.dtype", blobs.dtype
-        blobs = np.swapaxes(blobs, 0, 1)  # n_walkers, n_steps, 6, match chain
-        flatblobs = blobs[:, n_burn:, :].reshape((-1, 6))
-        indices = [i for i, ap in enumerate(append_opts) if ap]
-        flatchain = np.hstack((flatchain, flatblobs[:, indices]))
-    return flatchain
-
-
-def make_flatchain_table(sampler, param_names, metadata=None, **kwargs):
     """Create an Astropy Table of 'flatchain' of emcee walkers, removing any
-    burn-in steps.
-
-    This function works identically to :func:`make_flatchain`, except that
-    the result is an astropy Table instance, with properly named columns.
+    burn-in steps, and appending blob metadata.
 
     Parameters
     ----------
@@ -165,6 +108,8 @@ def make_flatchain_table(sampler, param_names, metadata=None, **kwargs):
     param_names : list
         List of strings identifying each parameter, and thus columns in
         the table.
+    bands : list
+        List of names of bandpasses (as defined for python-fsps).
     metadata : dict
         Optional dictonary of metadata to persist with the table.
     n_burn : int
@@ -189,19 +134,56 @@ def make_flatchain_table(sampler, param_names, metadata=None, **kwargs):
         The flattened chain as an astropy Table with burn-in steps removed and
         (if applicable) stellar population metadata appended.
     """
-    flatchain = make_flatchain(sampler, **kwargs)
-    colnames = list(param_names)
-    if 'append_mstar' in kwargs and kwargs['append_mstar']:
-        colnames.append('logMstar')
-    if 'append_mdust' in kwargs and kwargs['append_mdust']:
-        colnames.append('logMdust')
-    if 'append_lbol' in kwargs and kwargs['append_lbol']:
-        colnames.append('logLbol')
-    if 'append_sfr' in kwargs and kwargs['append_sfr']:
-        colnames.append('logsfr')
-    if 'append_model_sed' in kwargs and kwargs['append_model_sed']:
-        colnames.append('modelsed')
-    tbl = Table(flatchain, names=colnames, meta=metadata)
+    # Construction of the data type
+    n_bands = len(bands)
+    dt = [(n, float) for n in param_names]
+
+    nwalkers, nsteps, ndim = sampler.chain.shape
+    flatchain_arr = sampler.chain[:, n_burn:, :].reshape((-1, ndim))
+    print "flatchain_arr.shape", flatchain_arr.shape
+
+    # Add blob columns to the data type
+    blob_names = []
+    blob_index = []
+    if append_mstar:
+        dt.append(('logMstar', float))
+        blob_names.append('logMstar')
+        blob_index.append(0)
+    if append_mdust:
+        dt.append(('logMdust', float))
+        blob_names.append('logMdust')
+        blob_index.append(1)
+    if append_lbol:
+        dt.append('logLbol', float)
+        blob_names.append('logLbol')
+        blob_index.append(2)
+    if append_sfr:
+        dt.append('logsfr', float)
+        blob_names.append('logsfr')
+        blob_index.append(3)
+    if append_model_sed:
+        dt.append(('model_sed', float, n_bands))
+        blob_names.append('model_sed')
+        blob_index.append(4)
+
+    # Make an empty flatchain and fill
+    flatchain = np.empty(flatchain_arr.shape[0], dtype=np.dtype(dt))
+    for i, n in enumerate(param_names):
+        flatchain[n][:] = flatchain_arr[:, i]
+    if len(blob_names) > 0:
+        blobs = sampler.blobs
+
+        # Flatten the blob list and append it too
+        n_steps = nsteps - n_burn
+        for i in xrange(n_steps):
+            for j in xrange(nwalkers):
+                for k, n in zip(blob_index, blob_names):
+                    flatchain[n][i * j] = blobs[i + n_burn][j][k]
+
+    if metadata is None:
+        metadata = {}
+    metadata.update({"bandpasses": bands})
+    tbl = Table(flatchain, meta=metadata)
     return tbl
 
 
