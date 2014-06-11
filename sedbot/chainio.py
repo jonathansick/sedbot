@@ -8,7 +8,7 @@ import os
 from astropy.table import Table
 
 
-def write_flatchain(flatchain, param_names, filepath, tabledir,
+def write_flatchain(flatchain_table, filepath, tabledir,
                     overwrite=False):
     """Persist the flattened chain into an HDF5 file (uses `astropy.table`).
 
@@ -18,10 +18,9 @@ def write_flatchain(flatchain, param_names, filepath, tabledir,
 
     Parameters
     ----------
-    flatchain : ndarray
+    flatchain_table : `astropy.table.Table`
         The flatchain, likely created by
-        :func:`sedbot.modeltools.burnin_flatchain` or obtained directly from
-        the `flatchain` attribute of the emcee samper instance.
+        :func:`sedbot.modeltools.burnin_flatchain_table`
     filepath : str
         Path on disk for the HDF5 file
     tabledir : str
@@ -32,12 +31,12 @@ def write_flatchain(flatchain, param_names, filepath, tabledir,
         than overwriting it.
     """
     chain_path = os.path.join(tabledir, "flatchain")
-    tbl = Table(flatchain, names=param_names)
     if overwrite:
-        _append = True
-    else:
         _append = False
-    tbl.write(filepath, path=chain_path, append=_append, format='hdf5')
+    else:
+        _append = True
+    flatchain_table.write(filepath, path=chain_path, append=_append,
+                          format='hdf5', overwrite=overwrite)
 
 
 def read_flatchain(filepath, tabledir):

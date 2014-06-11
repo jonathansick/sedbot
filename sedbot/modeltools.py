@@ -7,6 +7,8 @@ Utilities for setting up models and working with emcee samplers.
 import time
 import numpy as np
 
+from astropy.table import Table
+
 
 from sedbot.photconv import abs_ab_mag_to_mjy
 from sedbot.zinterp import bracket_logz, interp_logz
@@ -140,6 +142,50 @@ def burnin_flatchain(sampler, n_burn, append_mstar=False, append_mdust=False,
         indices = [i for i, ap in enumerate(append_opts) if ap]
         flatchain = np.hstack((flatchain, flatblobs[:, indices]))
     return flatchain
+
+
+def burnin_flatchain_table(sampler, n_burn, param_names, **kwargs):
+    """Create an Astropy Table of 'flatchain' of emcee walkers, removing the
+    burn-in steps.
+
+    This function works identically to :func:`burnin_flatchain`, except that
+    the result is an astropy Table instance, with properly named columns.
+
+    Parameters
+    ----------
+    sampler : obj
+        An `emcee` sampler.
+    n_burn : int
+        Number of burn-in steps.
+    param_names : str
+        Names of the parameters being sampled.
+    append_mstar : bool
+        Append stellar mass to the chain.
+    append_mdust : bool
+        Append dust mass to the chain.
+    append_lbol : bool
+        Append bolometric luminosity to the chain.
+    append_sfr : bool
+        Append the star formation rate to the chain.
+
+    Returns
+    -------
+    tbl : `astropy.table.Table`
+        The flattened chain as an astropy Table with burn-in steps removed and
+        (if applicable) stellar population metadata appended.
+    """
+    flatchain = burnin_flatchain(sampler, n_burn, **kwargs)
+    colnames = list(param_names)
+    if 'append_mstar' in kwargs and kwargs['append_mstar']:
+        colnames.append('logMstar')
+    if 'append_mdust' in kwargs and kwargs['append_mdust']:
+        colnames.append('logMdust')
+    if 'append_lbol' in kwargs and kwargs['append_lbol']:
+        colnames.append('logLbol')
+    if 'append_sfr' in kwargs and kwargs['append_sfr']:
+        colnames.append('logsfr')
+    tbl = Table(flatchain, names=colnames)
+    return tbl
 
 
 def reset_seed_limits(start_points, lower, upper):
