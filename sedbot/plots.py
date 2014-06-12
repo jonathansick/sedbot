@@ -38,8 +38,9 @@ def chain_plot(path, sampler, param_names, limits):
     fig = Figure(figsize=(3.5, 10))
     canvas = FigureCanvas(fig)
     gs = gridspec.GridSpec(ndim, 1, left=0.2, right=0.95,
-            bottom=0.05, top=0.99,
-            wspace=None, hspace=0.1, width_ratios=None, height_ratios=None)
+                           bottom=0.05, top=0.99,
+                           wspace=None, hspace=0.1,
+                           width_ratios=None, height_ratios=None)
     axes = {}
     for i, (name, limit) in enumerate(zip(param_names, limits)):
         ax = fig.add_subplot(gs[i])
@@ -59,8 +60,8 @@ def chain_plot(path, sampler, param_names, limits):
     canvas.print_figure(path + ".pdf", format="pdf")
 
 
-def triangle_plot(path, samples, param_names, limits,
-        figsize=(5, 5), truths=None):
+def triangle_plot(path, flatchain, param_names, limits,
+                  figsize=(5, 5), truths=None, param_labels=None):
     """Make a corner plot using the triangle.py package.
     
     Triangle/corner plots are convenient visualizations of posterior
@@ -72,25 +73,41 @@ def triangle_plot(path, samples, param_names, limits,
     ----------
     path : str
         Path where the corner plot will be saved (as a PDF file).
-    samples : ndarray (nsteps, ndim)
+    flatchain : :class:`astropy.table.Table`
+        The flattened chain table.
         A flattened chain of emcee samples. To obtain a flat chain with
         burn-in steps removed, use
         `samples = sampler.chain[:, nburn:, :].reshape((-1, ndim))`
     param_names : list (ndim,)
-        Sequence of strings identifying each parameter
+        Sequence of strings identifying parameters (columns) to plot
     limits : list (ndim,)
         Sequence of `(lower, upper)` tuples defining the extent of each
         parameter. Must be the same length and order as `param_names` and
         parameters in the sampler's chain.
     truths : list (ndim,)
         True values for each parameter.
+    param_labels : list
+        Optional list of names for each parameter to be used for the plot
+        itself.
     """
     from triangle import corner
+
+    n_steps = len(flatchain)
+    n_cols = len(param_names)
+    samples = np.empty((n_steps, n_cols), dtype=float)
+    for i, n in enumerate(param_names):
+        samples[:, i] = flatchain[n]
+
+    if param_labels:
+        _labels = param_labels
+    else:
+        _labels = [escape_latex(n) for n in param_names]
+
     _prep_plot_dir(path)
-    fig = corner(samples, labels=param_names, extents=limits, truths=truths,
-            truth_color="#4682b4", scale_hist=False, quantiles=[],
-            verbose=True, plot_contours=True, plot_datapoints=True,
-            fig=None)
+    fig = corner(samples, labels=_labels, extents=limits, truths=truths,
+                 truth_color="#4682b4", scale_hist=False, quantiles=[],
+                 verbose=True, plot_contours=True, plot_datapoints=True,
+                 fig=None)
     fig.savefig(path)
 
 
