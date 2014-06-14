@@ -161,10 +161,14 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
         dt.append('logsfr', float)
         blob_names.append('logsfr')
         blob_index.append(3)
+    if append_age:
+        dt.append('logage', float)
+        blob_names.append('logage')
+        blob_index.append(5)
     if append_model_sed:
         dt.append(('model_sed', float, n_bands))
         blob_names.append('model_sed')
-        blob_index.append(4)
+        blob_index.append(5)
 
     # Make an empty flatchain and fill
     flatchain = np.empty(flatchain_arr.shape[0], dtype=np.dtype(dt))
