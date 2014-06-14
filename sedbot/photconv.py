@@ -18,7 +18,7 @@ import numpy as np
 MICROJY_ZP = 10. ** 6. * 10. ** 23. * 10. ** (-48.6 / 2.5)
 
 
-def ab_mag_to_mjy(mags):
+def ab_mag_to_mjy(mags, err=None):
     r"""Convert scalar (or array) AB magnitudes to µJy.
 
     That is, we apply the transformation:
@@ -30,17 +30,26 @@ def ab_mag_to_mjy(mags):
     ----------
     mags : ndarray
         AB magnitudes, either a scalar or an ``ndarray``.
+    err : ndarray
+        Optional array of magnitude uncertainties (1-sigma).
 
     Returns
     -------
     mjy : ndarray
         Flux densities, in micro Janskies (µJy). Same shape as input ``mags``
         array.
+    mjy_err : ndarray
+        Flux uncertainty, in micro Janskies (µJy) if `err` is specified.
     """
-    return MICROJY_ZP * np.power(10., -mags / 2.5)
+    mjy = MICROJY_ZP * np.power(10., -mags / 2.5)
+    if err is not None:
+        mjy_err = (mjy * err) / 1.0875
+        return mjy, mjy_err
+    else:
+        return mjy
 
 
-def ab_sb_to_mjy(mu, area):
+def ab_sb_to_mjy(mu, area, err=None):
     r"""Convert scalar (or array) AB surface brightness to µJy.
 
     That is, we apply the transformation:
@@ -55,14 +64,23 @@ def ab_sb_to_mjy(mu, area):
         ``ndarray``.
     area : ndarray
         Area, in square arcseconds. Must be the same shape as `sb`.
+    err : ndarray
+        Optional array of magnitude uncertainties (1-sigma).
 
     Returns
     -------
     mjy : ndarray
         Flux densities, in micro Janskies (µJy). Same shape as input ``mags``
         array.
+    mjy_err : ndarray
+        Flux uncertainty, in micro Janskies (µJy) if `err` is specified.
     """
-    return area * MICROJY_ZP * np.power(10., -mu / 2.5)
+    mjy = area * MICROJY_ZP * np.power(10., -mu / 2.5)
+    if err is not None:
+        mjy_err = (mjy * err) / 1.0875
+        return mjy, mjy_err
+    else:
+        return mjy
 
 
 def abs_ab_mag_to_mjy(mags, parsecs):
