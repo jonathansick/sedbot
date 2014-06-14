@@ -5,6 +5,7 @@ Plotting tools to analyze MCMC runs.
 """
 import os
 import numpy as np
+import matplotlib as mpl
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import matplotlib.gridspec as gridspec
@@ -109,6 +110,7 @@ def triangle_plot(path, flatchain, param_names, limits,
                  verbose=True, plot_contours=True, plot_datapoints=True,
                  fig=None)
     fig.savefig(path)
+    mpl.pyplot.close(fig)
 
 
 def _prep_plot_dir(path):
