@@ -76,11 +76,14 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
     meta2[2] = sp.log_lbol
     meta2[3] = sp.sfr
     meta2[4] = sp.log_age
-    model_mjy = interp_logz(zmet1, zmet2, logZZsol, f1, f2)
+
+    # Interpolate and scale the SED by mass
+    model_mjy = 10. ** logm * interp_logz(zmet1, zmet2, logZZsol, f1, f2)
+
+    # Interpolate metadata between the two metallicities
     meta = interp_logz(zmet1, zmet2, logZZsol, meta1, meta2)
 
-    L = -0.5 * np.sum(
-        np.power((10. ** logm * model_mjy - obs_mjy) / obs_sigma, 2.))
+    L = -0.5 * np.sum(np.power((model_mjy - obs_mjy) / obs_sigma, 2.))
 
     # Compute ln posterior probability
     # L, model_sed = ln_like(theta, obs_mjy, obs_sigma, bands, sp)
