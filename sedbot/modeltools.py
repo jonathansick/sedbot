@@ -97,7 +97,7 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
 def make_flatchain(sampler, param_names, bands, metadata=None,
                    n_burn=0, append_mstar=False, append_mdust=False,
                    append_lbol=False, append_sfr=False, append_age=False,
-                   append_model_sed=False):
+                   append_model_sed=False, append_lnpost=False):
     """Create an Astropy Table of 'flatchain' of emcee walkers, removing any
     burn-in steps, and appending blob metadata.
 
@@ -140,27 +140,29 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
 
     nwalkers, nsteps, ndim = sampler.chain.shape
     flatchain_arr = sampler.chain[:, n_burn:, :].reshape((-1, ndim))
-    print "flatchain_arr.shape", flatchain_arr.shape
 
     # Add blob columns to the data type
     blob_names = []
     blob_index = []
+    dt.append(('lnpost', float))
+    blob_names.append('lnpost')
+    blob_index.append(0)
     if append_mstar:
         dt.append(('logMstar', float))
         blob_names.append('logMstar')
-        blob_index.append(0)
+        blob_index.append(1)
     if append_mdust:
         dt.append(('logMdust', float))
         blob_names.append('logMdust')
-        blob_index.append(1)
+        blob_index.append(2)
     if append_lbol:
         dt.append('logLbol', float)
         blob_names.append('logLbol')
-        blob_index.append(2)
+        blob_index.append(3)
     if append_sfr:
         dt.append('logsfr', float)
         blob_names.append('logsfr')
-        blob_index.append(3)
+        blob_index.append(4)
     if append_age:
         dt.append('logage', float)
         blob_names.append('logage')
@@ -168,7 +170,7 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
     if append_model_sed:
         dt.append(('model_sed', float, n_bands))
         blob_names.append('model_sed')
-        blob_index.append(5)
+        blob_index.append(6)
 
     # Make an empty flatchain and fill
     flatchain = np.empty(flatchain_arr.shape[0], dtype=np.dtype(dt))
@@ -188,6 +190,10 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
         metadata = {}
     metadata.update({"bandpasses": bands})
     tbl = Table(flatchain, meta=metadata)
+    # Bad posterior samples are given values of 0 by emcee; so filter them
+    bad = np.where((flatchain['lnpost'] == 0.))[0]
+    for n in tbl.keys():
+        tbl[n][bad] = np.nan
     return tbl
 
 

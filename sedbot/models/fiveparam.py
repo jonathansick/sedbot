@@ -46,7 +46,7 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
     # Evaluate priors
     prior_p = sum(lnp(x) for x, lnp in zip(theta, prior_funcs))
     if not np.isfinite(prior_p):
-        return -np.inf, 0.
+        return -np.inf, np.nan
 
     # Evaluate the ln-likelihood function by interpolating between metallicty
     # bracket
@@ -95,5 +95,6 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
     log_lbol = theta[0] * meta[2]  # log solar luminosities
     log_sfr = theta[0] * meta[3]  # star formation rate, M_sun / yr
     log_age = meta[4]  # log(age / yr)
-    blob = (log_m_star, log_m_dust, log_lbol, log_sfr, log_age, model_mjy)
+    blob = (lnpost, log_m_star, log_m_dust, log_lbol, log_sfr, log_age,
+            model_mjy)
     return lnpost, blob
