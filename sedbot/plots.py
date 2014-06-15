@@ -11,7 +11,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import matplotlib.gridspec as gridspec
 
 
-def chain_plot(path, sampler, param_names, limits):
+def chain_plot(path, flatchain, param_names, limits=None,
+               truths=None, param_labels=None, figsize=(3.5, 10)):
     """Diagnostic plot of walker chains.
     
     The chain plot shows lineplots of each walker, for each parameter. This
@@ -21,38 +22,46 @@ def chain_plot(path, sampler, param_names, limits):
     Parameters
     ----------
     path : str
-        Path where the chain plot will be saved (as a PDF file).
-    sampler : obj
-        An emcee sampler instance.
-    param_names : list
-        Sequence of strings identifying each parameter
-    limits : list (ndim)
+        Path where the corner plot will be saved (as a PDF file).
+    flatchain : :class:`astropy.table.Table`
+        The flattened chain table.
+        A flattened chain of emcee samples. To obtain a flat chain with
+        burn-in steps removed, use
+        `samples = sampler.chain[:, nburn:, :].reshape((-1, ndim))`
+    param_names : list (ndim,)
+        Sequence of strings identifying parameters (columns) to plot
+    limits : list (ndim,)
         Sequence of `(lower, upper)` tuples defining the extent of each
         parameter. Must be the same length and order as `param_names` and
         parameters in the sampler's chain.
+    truths : list (ndim,)
+        True values for each parameter.
+    param_labels : list
+        Optional list of names for each parameter to be used for the plot
+        itself.
     """
     _prep_plot_dir(path)
 
-    nwalkers, nsteps, ndim = sampler.chain.shape
-    steps = np.arange(nsteps)
-
-    fig = Figure(figsize=(3.5, 10))
+    fig = Figure(figsize=figsize)
     canvas = FigureCanvas(fig)
-    gs = gridspec.GridSpec(ndim, 1, left=0.2, right=0.95,
+    gs = gridspec.GridSpec(len(param_names), 1, left=0.2, right=0.95,
                            bottom=0.05, top=0.99,
                            wspace=None, hspace=0.1,
                            width_ratios=None, height_ratios=None)
     axes = {}
-    for i, (name, limit) in enumerate(zip(param_names, limits)):
+    steps = np.arange(len(flatchain))
+    for i, name in enumerate(param_names):
         ax = fig.add_subplot(gs[i])
-        for j in xrange(nwalkers):
-            ax.plot(steps, sampler.chain[j, :, i], '-', lw=0.5, alpha=0.5)
+        ax.scatter(steps, flatchain[name],
+                   s=1, marker='o',
+                   facecolors='k', edgecolors='None',
+                   rasterized=True)
         ax.set_xlim(steps.min(), steps.max())
-        if limits is not None and name in limits:
-            ax.set_ylim(*limit)
+        # if limits is not None and name in limits:
+        #     ax.set_ylim(*limit)
         ax.set_ylabel(name)
         axes[name] = ax
-        if i < ndim - 1:
+        if i < len(param_names) - 1:
             for tl in ax.get_xmajorticklabels():
                 tl.set_visible(False)
     axes[param_names[-1]].set_xlabel('steps')
