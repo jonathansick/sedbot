@@ -24,7 +24,7 @@ def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
     flux : ndarray
         SED in micro-Janskies.
     bands : list
-        List of bandpass names, corresponding to flux array.
+        List of `python-fsps` bandpass names, corresponding to flux array.
     fluxerr : ndarray
         Uncertainty in SED flux, micro-Janskies. Interpret as a symmetric
         standard deviation.
@@ -54,13 +54,31 @@ def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
         ax.scatter(x, y, **settings)
 
 
-def plot_sed_error_band(ax, lower_sed, upper_sed, bands, **kwargs):
+def plot_sed_error_band(ax, lower_flux, upper_flux, bands, **kwargs):
+    """Plot an SED confidence interface as a continuous band. Useful for
+    plotting the distribution of model SEDs in the MCMC chain.
+
+    Parameters
+    ----------
+    ax : `axes`
+        Matplotlib axes.
+    lower_flux : ndarray
+        Lower confidence limit of SED in micro-Janskies.
+    upper_flux : ndarray
+        Upper confidence limit of SED in micro-Janskies.
+    bands : list
+        List of `python-fsps` bandpass names, corresponding to flux array.
+    """
     settings = {'edgecolor': 'None',
                 'facecolor': 'y',
-                'alpha': 0.5}
+                'alpha': 0.5,
+                'interpolate': True}
     settings.update(kwargs)
     x = np.log10(wavelength_microns(bands))
-    ax.fill_between(x, lower_sed, y2=upper_sed, interpolate=True, **settings)
+    ax.fill_between(x,
+                    np.log10(microJy_to_lambdaFlambda(lower_flux, bands)),
+                    y2=np.log10(microJy_to_lambdaFlambda(upper_flux, bands)),
+                    **settings)
 
 
 def microJy_to_lambdaFlambda(flux, bands):
