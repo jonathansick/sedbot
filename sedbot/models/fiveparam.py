@@ -9,7 +9,7 @@ Model components are:
 1. `logmass`: log10 solar mass
 2. `log(Z/Z_sol)`: logarithmic metallicity
 3. `d`: distance in parsecs
-4. `tau`: e-folding time
+4. `log(tau)`: e-folding time
 5. `const`: constant star forming rate component
 6. `sf_start`: time of oldest star formation, in Gyr after the Big Bang.
 7. `tburst`: time of star formation burst (in Gyr after Big Bang).
@@ -53,7 +53,7 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
     logm = theta[0]  # logmass
     logZZsol = theta[1]
     d = theta[2]
-    sp.params['tau'] = theta[3]
+    sp.params['tau'] = 10. ** theta[3]
     sp.params['const'] = theta[4]
     sp.params['sf_start'] = theta[5]
     sp.params['tburst'] = theta[6]
