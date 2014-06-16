@@ -188,7 +188,8 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
 
     if metadata is None:
         metadata = {}
-    metadata.update({"bandpasses": bands})
+    metadata.update({"bandpasses": bands,
+                     "f_accept": sampler.acceptance_fraction})
     tbl = Table(flatchain, meta=metadata)
     # Bad posterior samples are given values of 0 by emcee; so filter them
     bad = np.where((flatchain['lnpost'] >= 0.))[0]
