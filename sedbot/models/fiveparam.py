@@ -28,9 +28,30 @@ from sedbot.zinterp import bracket_logz, interp_logz
 NDIM = 9
 
 
-def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
+def ln_prob(theta, prior_funcs,
+            obs_mjy, obs_sigma, bands, obs_band_indices, sp):
     """ln-probability function
-    
+
+    Parameters
+    ----------
+    theta : ndarray
+        Model parameters.
+    obs_mjy : ndarray
+        Observed fluxes, in µJy.
+    obs_sigma : ndarray
+        Uncertainties in observed fluxes; µJy.
+    bands : list of strings
+        List of FSPS band names to model.
+    obs_band_indices : ndarray
+        Integer indices of band names in ``bands`` that correspond to
+        ``obs_mjy``. This is done so that we can get model fluxes for more
+        bands than we actually provide observations for.
+    sp : :class:`fsps.fsps.StellarPopupulation`
+        The FSPS stellar population instance.
+    prior_funcs : list
+        List of functions, corresponding to ``theta`` that provide prior
+        probabilities on each parameter.
+
     Returns
     -------
     lnpost : float
@@ -83,10 +104,10 @@ def ln_prob(theta, obs_mjy, obs_sigma, bands, sp, prior_funcs):
     # Interpolate metadata between the two metallicities
     meta = interp_logz(zmet1, zmet2, logZZsol, meta1, meta2)
 
-    L = -0.5 * np.sum(np.power((model_mjy - obs_mjy) / obs_sigma, 2.))
+    L = -0.5 * np.sum(
+        np.power((model_mjy[obs_band_indices] - obs_mjy) / obs_sigma, 2.))
 
     # Compute ln posterior probability
-    # L, model_sed = ln_like(theta, obs_mjy, obs_sigma, bands, sp)
     lnpost = prior_p + L
 
     # Scale statistics by the total mass
