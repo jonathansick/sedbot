@@ -75,10 +75,10 @@ def plot_sed_error_band(ax, lower_flux, upper_flux, bands, **kwargs):
                 'interpolate': True}
     settings.update(kwargs)
     x = np.log10(wavelength_microns(bands))
-    ax.fill_between(x,
-                    np.log10(microJy_to_lambdaFlambda(lower_flux, bands)),
-                    y2=np.log10(microJy_to_lambdaFlambda(upper_flux, bands)),
-                    **settings)
+    s = np.argsort(x)
+    upper = np.log10(microJy_to_lambdaFlambda(upper_flux, bands))[s]
+    lower = np.log10(microJy_to_lambdaFlambda(lower_flux, bands))[s]
+    ax.fill_between(x, lower, y2=upper, **settings)
 
 
 def microJy_to_lambdaFlambda(flux, bands):
