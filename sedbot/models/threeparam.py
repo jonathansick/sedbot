@@ -43,6 +43,9 @@ def ln_prob(theta, prior_funcs,
     ----------
     theta : ndarray
         Model parameters.
+    prior_funcs : list
+        List of functions, corresponding to ``theta`` that provide prior
+        probabilities on each parameter.
     obs_mjy : ndarray
         Observed fluxes, in µJy.
     obs_sigma : ndarray
@@ -55,9 +58,6 @@ def ln_prob(theta, prior_funcs,
         bands than we actually provide observations for.
     sp : :class:`fsps.fsps.StellarPopupulation`
         The FSPS stellar population instance.
-    prior_funcs : list
-        List of functions, corresponding to ``theta`` that provide prior
-        probabilities on each parameter.
 
     Returns
     -------

@@ -151,8 +151,12 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
         n_steps = nsteps - n_burn
         for i in xrange(n_steps):
             for j in xrange(nwalkers):
-                for k, n in zip(blob_index, blob_names):
-                    flatchain[n][i * j] = blobs[i + n_burn][j][k]
+                if blobs[i + n_burn][j] is not np.nan:
+                    for k, n in zip(blob_index, blob_names):
+                        flatchain[n][i * j] = blobs[i + n_burn][j][k]
+                else:
+                    for k, n in zip(blob_index, blob_names):
+                        flatchain[n][i * j] = np.nan
 
     if metadata is None:
         metadata = {}
