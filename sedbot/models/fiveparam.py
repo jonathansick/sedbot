@@ -27,6 +27,17 @@ from sedbot.zinterp import bracket_logz, interp_logz
 # Number of model dimensions
 NDIM = 9
 
+# Names of parameters
+PARAM_NAMES = ['logmass',
+               'logZZsol',
+               'd',
+               'logtau',
+               'const',
+               'sf_start',
+               'tburst',
+               'fburst',
+               'dust2']
+
 
 def ln_prob(theta, prior_funcs,
             obs_mjy, obs_sigma, bands, obs_band_indices, sp):
@@ -36,6 +47,9 @@ def ln_prob(theta, prior_funcs,
     ----------
     theta : ndarray
         Model parameters.
+    prior_funcs : list
+        List of functions, corresponding to ``theta`` that provide prior
+        probabilities on each parameter.
     obs_mjy : ndarray
         Observed fluxes, in µJy.
     obs_sigma : ndarray
@@ -48,9 +62,6 @@ def ln_prob(theta, prior_funcs,
         bands than we actually provide observations for.
     sp : :class:`fsps.fsps.StellarPopupulation`
         The FSPS stellar population instance.
-    prior_funcs : list
-        List of functions, corresponding to ``theta`` that provide prior
-        probabilities on each parameter.
 
     Returns
     -------
