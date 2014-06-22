@@ -114,6 +114,8 @@ def ln_prob(theta, prior_funcs,
 
     # Compute ln posterior probability
     lnpost = prior_p + L
+    if not np.isfinite(lnpost):
+        lnpost = -np.inf
 
     # Scale statistics by the total mass
     log_m_star = theta[0] + np.log10(meta[0])  # log solar masses
