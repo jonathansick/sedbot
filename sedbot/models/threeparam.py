@@ -94,6 +94,7 @@ def ln_prob(theta, prior_funcs,
     meta1[2] = sp.log_lbol
     meta1[3] = sp.sfr
     meta1[4] = sp.log_age
+    spec1 = sp.get_spectrum(tage=13.8, peraa=True)[1]
     # Compute fluxes with high metallicity
     sp.params['zmet'] = zmet2
     f2 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d)
@@ -102,12 +103,17 @@ def ln_prob(theta, prior_funcs,
     meta2[2] = sp.log_lbol
     meta2[3] = sp.sfr
     meta2[4] = sp.log_age
+    spec2 = sp.get_spectrum(tage=13.8, peraa=True)[1]
 
     # Interpolate and scale the SED by mass
     model_mjy = 10. ** logm * interp_logz(zmet1, zmet2, logZZsol, f1, f2)
 
     # Interpolate metadata between the two metallicities
     meta = interp_logz(zmet1, zmet2, logZZsol, meta1, meta2)
+
+    # Interpolate and scale the spectrum by mass
+    model_spec = 10. ** logm * interp_logz(zmet1, zmet2, logZZsol,
+                                           spec1, spec2)
 
     L = -0.5 * np.sum(
         np.power((model_mjy[obs_band_indices] - obs_mjy) / obs_sigma, 2.))
@@ -124,5 +130,5 @@ def ln_prob(theta, prior_funcs,
     log_sfr = theta[0] * meta[3]  # star formation rate, M_sun / yr
     log_age = meta[4]  # log(age / yr)
     blob = (lnpost, log_m_star, log_m_dust, log_lbol, log_sfr, log_age,
-            model_mjy)
+            model_mjy, model_spec)
     return lnpost, blob

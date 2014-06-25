@@ -65,7 +65,9 @@ def read_flatchain(filepath, tabledir):
 def make_flatchain(sampler, param_names, bands, metadata=None,
                    n_burn=0, append_mstar=False, append_mdust=False,
                    append_lbol=False, append_sfr=False, append_age=False,
-                   append_model_sed=False, append_lnpost=False):
+                   append_model_sed=False,
+                   append_model_spec=False, wavelengths=None,
+                   append_lnpost=False):
     """Create an Astropy Table of 'flatchain' of emcee walkers, removing any
     burn-in steps, and appending blob metadata.
 
@@ -95,6 +97,12 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
     append_model_sed : bool
         Append the model SED (units of µJy); an array with modelled
         fluxes in each bandpass.
+    append_model_spec : bool
+        Append the model spectrum (units of :math:`L_\odot/\AA`).
+    wavelengths : ndarray
+        If ``append_model_sed`` is set, the wavelength grid must also be set.
+        The wavelength grid will be appended to the `wavelengths` field of
+        the flatchain's HDF5 metadata.
 
     Returns
     -------
@@ -102,6 +110,9 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
         The flattened chain as an astropy Table with burn-in steps removed and
         (if applicable) stellar population metadata appended.
     """
+    if append_model_spec is not None:
+        assert wavelengths is not None
+
     # Construction of the data type
     n_bands = len(bands)
     dt = [(n, float) for n in param_names]
@@ -139,6 +150,10 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
         dt.append(('model_sed', float, n_bands))
         blob_names.append('model_sed')
         blob_index.append(6)
+    if append_model_spec:
+        dt.append(('model_spec', float, len(wavelengths)))
+        blob_names.append('model_spec')
+        blob_index.append(7)
 
     # Make an empty flatchain and fill
     flatchain = np.empty(flatchain_arr.shape[0], dtype=np.dtype(dt))
@@ -162,6 +177,8 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
         metadata = {}
     metadata.update({"bandpasses": bands,
                      "f_accept": sampler.acceptance_fraction})
+    if wavelengths is not None:
+        metadata['wavelengths'] = wavelengths
     tbl = Table(flatchain, meta=metadata)
     # Bad posterior samples are given values of 0 by emcee; so filter them
     bad = np.where((flatchain['lnpost'] >= 0.))[0]
