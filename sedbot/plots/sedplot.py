@@ -29,21 +29,21 @@ def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
         Uncertainty in SED flux, micro-Janskies. Interpret as a symmetric
         standard deviation.
     """
-    settings = {'ecolor': 'k',
-                'elinewidth': None,
-                'capsize': 3,
-                'fmt': '-',
-                'barsabove': False,
-                'errorevery': 1,
-                'capthick': None,
-                'ls': 'None',
-                'color': 'k',
-                'marker': 'o',
-                'ms': 2}
-    settings.update(kwargs)
     y = np.log10(microJy_to_lambdaFlambda(flux, bands))
     x = np.log10(wavelength_microns(bands))
     if fluxerr is not None:
+        settings = {'ecolor': 'k',
+                    'elinewidth': None,
+                    'capsize': 3,
+                    'fmt': '-',
+                    'barsabove': False,
+                    'errorevery': 1,
+                    'capthick': None,
+                    'ls': 'None',
+                    'color': 'k',
+                    'marker': 'o',
+                    'ms': 2}
+        settings.update(kwargs)
         yhi = np.log10(microJy_to_lambdaFlambda(flux + fluxerr, bands))
         ylo = np.log10(microJy_to_lambdaFlambda(flux - fluxerr, bands))
         yerrhi = yhi - y
@@ -51,6 +51,10 @@ def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
         yerr = np.vstack([yerrhi, yerrlo])
         ax.errorbar(x, y, yerr=yerr, **settings)
     else:
+        settings = {'color': 'k',
+                    'marker': 'o',
+                    's': 4}
+        settings.update(kwargs)
         ax.scatter(x, y, **settings)
 
 
@@ -79,6 +83,27 @@ def plot_sed_error_band(ax, lower_flux, upper_flux, bands, **kwargs):
     upper = np.log10(microJy_to_lambdaFlambda(upper_flux, bands))[s]
     lower = np.log10(microJy_to_lambdaFlambda(lower_flux, bands))[s]
     ax.fill_between(x, lower, y2=upper, **settings)
+
+
+def label_filters(ax, flux, bands, **kwargs):
+    """Plot filter labels above each SED plot."""
+    y = np.log10(microJy_to_lambdaFlambda(flux, bands))
+    x = np.log10(wavelength_microns(bands))
+    s = np.argsort(x)
+    x = x[s]
+    y = y[s]
+    labels = [bands[i] for i in s]
+    for xi, yi, label in zip(x, y, labels):
+        label = label.replace("_", "\_")
+        # ax.text(xi, yi, label, rotation='vertical', fontsize=9.)
+        ax.annotate(label, (xi, yi),
+                    textcoords='offset points',
+                    xytext=(0., 10.),
+                    fontsize=5.,
+                    rotation='vertical',
+                    ha='center',
+                    va='bottom',
+                    zorder=-5)
 
 
 def microJy_to_lambdaFlambda(flux, bands):
