@@ -112,3 +112,46 @@ def abs_ab_mag_to_mjy(mags, parsecs):
     m = mags - 5. * (1. - np.log10(parsecs))  # apparent magnitudes
     mjy = MICROJY_ZP * np.power(10., -m / 2.5)
     return mjy
+
+
+def sb_to_mass(sb, msun, logml, area, d):
+    """Compute :math:`\log \mathcal{M}_*` given a surface brightness
+    and mass to light ratio.
+
+    This can be useful for establishing a prior on the total stellar mass
+    in a pixel given prior knowledge of M/L ratio.
+
+    Parameters
+    ----------
+    sb : ndarray
+        Surface brightness (mag/arcsec^2)
+    msun : float
+        Absolute magnitude of the sun. This can be obtained from
+    logml : ndarray
+        Log of M/L (stellar mass to light ratio).
+    area : ndarray
+        Area of region/pixel in square arcseconds.
+    d : ndarray
+        Distance in parsecs.
+    """
+    return logml + sb_to_luminosity(sb, msun, area, d)
+
+
+def sb_to_luminosity(sb, msun, A, d):
+    """Convert a surface brightness to
+    :math:`\log \mathcal{L}/\mathcal{L}_\odot`, the luminosity in solar units
+    of a region of projected area `A`.
+
+    Parameters
+    ----------
+    sb : ndarray
+        Surface brightness (mag/arcsec^2)
+    msun : float
+        Absolute magnitude of the Sun.
+    area : ndarray
+        Area of region in square arcseconds.
+    d : ndarray
+        Distance in parsecs.
+    """
+    m = sb - 5. * np.log10(d) + 5. - msun
+    return np.log10(A * 10. ** (-0.4 * m))
