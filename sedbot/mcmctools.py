@@ -10,7 +10,7 @@ import numpy as np
 
 def init_chain(n_walkers, x0, x_sigma, limits):
     """Init chain position given the number of walkers.
-    
+
     Parameters
     ----------
     n_walkers : int
@@ -41,7 +41,7 @@ def init_chain(n_walkers, x0, x_sigma, limits):
 def reset_seed_limits(start_points, lower, upper):
     """In-place replacement of starting point seed values that are above/below
     specified limits.
-    
+
     This function is useful in :func:`init_chain` functions. If initial points
     are generated from a Gaussian distribution, then they may randomly scatter
     below or above hard physical limits. This fnction resets those low/high
@@ -122,10 +122,15 @@ class EmceeTimer(object):
     @property
     def seconds_per_call(self):
         """The mean number of seconds elapsed per likelihood call.
-        
+
         Returns
         -------
         interval : float
             Description
         """
         return self._interval / float(self._nsteps * self._nwalkers)
+
+    @property
+    def interval(self):
+        """The timer interval in secods."""
+        return self._interval
