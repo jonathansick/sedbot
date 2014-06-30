@@ -65,9 +65,15 @@ def read_flatchain(filepath, tabledir):
 def make_flatchain(sampler, param_names, bands, metadata=None,
                    n_burn=0, append_mstar=False, append_mdust=False,
                    append_lbol=False, append_sfr=False, append_age=False,
-                   append_model_sed=False, append_lnpost=False):
+                   append_model_sed=False, append_lnpost=False,
+                   save_acor=False):
     """Create an Astropy Table of 'flatchain' of emcee walkers, removing any
     burn-in steps, and appending blob metadata.
+
+    Default metadata is
+
+    - ``bandpasses``: the FSPS names of modelled bandpasses.
+    - ``f_accept``: acceptance fraction.
 
     Parameters
     ----------
@@ -95,6 +101,9 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
     append_model_sed : bool
         Append the model SED (units of µJy); an array with modelled
         fluxes in each bandpass.
+    save_acor : bool
+        If ``True`` append autocorrelation time for sampler in metadata under
+        the ``accor`` field.
 
     Returns
     -------
@@ -162,6 +171,8 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
         metadata = {}
     metadata.update({"bandpasses": bands,
                      "f_accept": sampler.acceptance_fraction})
+    if save_acor:
+        metadata['acor'] = sampler.acor
     tbl = Table(flatchain, meta=metadata)
     # Bad posterior samples are given values of 0 by emcee; so filter them
     bad = np.where((flatchain['lnpost'] >= 0.))[0]
