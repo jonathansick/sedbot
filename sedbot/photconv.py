@@ -83,6 +83,12 @@ def ab_sb_to_mjy(mu, area, err=None):
         return mjy
 
 
+def mjy_to_ab_sb(mjy, area):
+    """Convert a flux in µJy to a surface brightness."""
+    sb = - 2.5 * np.log10(mjy / area / MICROJY_ZP)
+    return sb
+
+
 def abs_ab_mag_to_mjy(mags, parsecs):
     r"""Convert scalar (or array) absolute AB magnitudes to µJy assuming a
     distance in parsecs.
