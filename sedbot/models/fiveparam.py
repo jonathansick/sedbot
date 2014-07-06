@@ -71,14 +71,22 @@ def ln_prob(theta, prior_funcs,
         FSPS metadata for this likelihood call. Includes data on stellar mass,
         dust mass, as well as the modelled SED (in µJy).
     """
-    # Placeholders for metadata at high and low metallicity brackets
-    meta1 = np.empty(5)
-    meta2 = np.empty(5)
+    # Check that SF fractions const + fburst <= 1
+    if theta[4] + theta[7] > 1.:
+        return -np.inf, np.nan
+
+    # Check that tburst >= sf_start
+    if theta[5] > theta[6]:
+        return -np.inf, np.nan
 
     # Evaluate priors
     prior_p = sum(lnp(x) for x, lnp in zip(theta, prior_funcs))
     if not np.isfinite(prior_p):
         return -np.inf, np.nan
+
+    # Placeholders for metadata at high and low metallicity brackets
+    meta1 = np.empty(5)
+    meta2 = np.empty(5)
 
     # Evaluate the ln-likelihood function by interpolating between metallicty
     # bracket
