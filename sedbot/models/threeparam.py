@@ -12,7 +12,8 @@ Comprehensive model components are:
 4. `log(tau)`: e-folding time
 5. `const`: constant star forming rate component
 6. `sf_start`: time of oldest star formation, in Gyr after the Big Bang.
-7. `dust2`: attenuation due to dust (with Calzetti 2000 curve).
+7. `dust1`: dust optical depth for younger populations
+8. `dust2`: dust optical depth for older populations
 
 In this model, MCMC sampling is done for each of these parameters.
 """
@@ -32,6 +33,7 @@ PARAM_NAMES = ['logmass',
                'logtau',
                'const',
                'sf_start',
+               'dust1',
                'dust2']
 
 
@@ -84,7 +86,8 @@ def ln_prob(theta, prior_funcs,
     sp.params['tau'] = 10. ** theta[3]
     sp.params['const'] = theta[4]
     sp.params['sf_start'] = theta[5]
-    sp.params['dust2'] = theta[6]
+    sp.params['dust1'] = theta[6]
+    sp.params['dust2'] = theta[7]
     zmet1, zmet2 = bracket_logz(logZZsol)
     # Compute fluxes with low metallicity
     sp.params['zmet'] = zmet1

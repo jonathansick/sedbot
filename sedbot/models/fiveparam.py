@@ -14,9 +14,10 @@ Model components are:
 6. `sf_start`: time of oldest star formation, in Gyr after the Big Bang.
 7. `tburst`: time of star formation burst (in Gyr after Big Bang).
 8. `fburst`: fraction of final stellar mass generated in burst.
-9. `dust2`: attenuation due to dust (with Calzetti 2000 curve).
+9. `dust1`: optical depth of young populations
+10. `dust2`: optical depth of older populations
 
-In this model, MCMC sampling is done for each of these nine parameters.
+In this model, MCMC sampling is done for each of these ten parameters.
 """
 
 import numpy as np
@@ -36,6 +37,7 @@ PARAM_NAMES = ['logmass',
                'sf_start',
                'tburst',
                'fburst',
+               'dust1',
                'dust2']
 
 
@@ -98,7 +100,8 @@ def ln_prob(theta, prior_funcs,
     sp.params['sf_start'] = theta[5]
     sp.params['tburst'] = theta[6]
     sp.params['fburst'] = theta[7]
-    sp.params['dust2'] = theta[8]
+    sp.params['dust1'] = theta[8]
+    sp.params['dust2'] = theta[9]
     zmet1, zmet2 = bracket_logz(logZZsol)
     # Compute fluxes with low metallicity
     sp.params['zmet'] = zmet1
