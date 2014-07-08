@@ -17,7 +17,8 @@ Model components are:
 9. `dust1`: optical depth of young populations
 10. `dust2`: optical depth of older populations
 
-In this model, MCMC sampling is done for each of these ten parameters.
+Note that the extinction law can either be a powerlaw (``dust_type=0``),
+Milky Way (``dust_type=1``) or Witt & Gordon 2000 (``dust_type=3``).
 """
 
 import numpy as np
@@ -26,7 +27,7 @@ from sedbot.photconv import abs_ab_mag_to_mjy
 from sedbot.zinterp import bracket_logz, interp_logz
 
 # Number of model dimensions
-NDIM = 9
+NDIM = 10
 
 # Names of parameters
 PARAM_NAMES = ['logmass',
