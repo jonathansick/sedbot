@@ -83,10 +83,33 @@ def ab_sb_to_mjy(mu, area, err=None):
         return mjy
 
 
-def mjy_to_ab_sb(mjy, area):
-    """Convert a flux in µJy to a surface brightness."""
+def mjy_to_ab_sb(mjy, area, err=None):
+    """Convert a flux in µJy to a surface brightness.
+
+    Parameters
+    ----------
+    mjy : ndarray
+        Flux densities, in micro Janskie (µJy), either a scalar or an
+        ``ndarray``.
+    area : ndarray
+        Area, in square arcseconds.
+    err : ndarray
+        Optional array of flux density uncertainties (1-sigma).
+
+    Returns
+    -------
+    mjy : ndarray
+        Surface brightness.
+        array.
+    mjy_err : ndarray
+        Surface brightness uncertainty, if ``err`` was specified.
+    """
     sb = - 2.5 * np.log10(mjy / area / MICROJY_ZP)
-    return sb
+    if err is not None:
+        sb_err = 1.0875 * err / mjy
+        return sb, sb_err
+    else:
+        return sb
 
 
 def abs_ab_mag_to_mjy(mags, parsecs):
