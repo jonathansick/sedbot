@@ -70,6 +70,10 @@ def ln_prob(theta, prior_funcs,
         FSPS metadata for this likelihood call. Includes data on stellar mass,
         dust mass, as well as the modelled SED (in µJy).
     """
+    # Physically we'd expect dust1 > dust2 if young stars are more embedded
+    if theta[6] < theta[7]:
+        return -np.inf, np.nan
+
     # Placeholders for metadata at high and low metallicity brackets
     meta1 = np.empty(5)
     meta2 = np.empty(5)

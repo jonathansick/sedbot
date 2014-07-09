@@ -82,6 +82,10 @@ def ln_prob(theta, prior_funcs,
     if theta[5] > theta[6]:
         return -np.inf, np.nan
 
+    # Physically we'd expect dust1 > dust2 if young stars are more embedded
+    if theta[8] < theta[9]:
+        return -np.inf, np.nan
+
     # Evaluate priors
     prior_p = sum(lnp(x) for x, lnp in zip(theta, prior_funcs))
     if not np.isfinite(prior_p):
