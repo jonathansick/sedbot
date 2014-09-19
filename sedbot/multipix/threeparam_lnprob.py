@@ -33,14 +33,11 @@ class ThreeParamLnProb(object):
     0. d
     """
     def __init__(self, fsps_params, obs_bands,
-                 B, phi,
                  obs_sed=None, obs_err=None, priors=None,
                  fsps_compute_bands=None):
         super(ThreeParamLnProb, self).__init__()
         self._sp = fsps.StellarPopulation(**fsps_params)
         self._bands = obs_bands
-        self.B = B
-        self.phi = phi
         self._obs_sed = obs_sed
         self._obs_err = obs_err
         self._priors = priors
@@ -76,7 +73,7 @@ class ThreeParamLnProb(object):
         self._obs_err = obs_err
         self._priors = priors
 
-    def __call__(self, theta):
+    def __call__(self, theta, B, phi):
         """Compute the ln posterior probability."""
         # Physically we'd expect dust1 > dust2 if young stars are more embedded
         if theta[5] < theta[6]:
@@ -103,7 +100,7 @@ class ThreeParamLnProb(object):
         self._sp.params['zmet'] = zmet1
         f1 = abs_ab_mag_to_mjy(
             self._sp.get_mags(tage=13.8, bands=self._compute_bands),
-            self.phi[0])
+            phi[0])
         self._meta1[0] = self._sp.stellar_mass
         self._meta1[1] = self._sp.dust_mass
         self._meta1[2] = self._sp.log_lbol
@@ -113,7 +110,7 @@ class ThreeParamLnProb(object):
         self._sp.params['zmet'] = zmet2
         f2 = abs_ab_mag_to_mjy(
             self._sp.get_mags(tage=13.8, bands=self._compute_bands),
-            self.phi[0])
+            phi[0])
         self._meta2[0] = self._sp.stellar_mass
         self._meta2[1] = self._sp.dust_mass
         self._meta2[2] = self._sp.log_lbol
@@ -128,7 +125,7 @@ class ThreeParamLnProb(object):
 
         # Compute likelihood
         L = -0.5 * np.sum(
-            np.power((model_mjy[self._band_indices] + self.B
+            np.power((model_mjy[self._band_indices] + B
                      - self._obs_sed) / self._obs_err, 2.))
 
         # Compute ln posterior probability
