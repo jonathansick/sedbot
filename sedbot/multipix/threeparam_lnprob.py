@@ -18,7 +18,7 @@ class ThreeParamLnProb(object):
     """
     FIXME add addition of background.
 
-    Parameters in theta space are:
+    Parameters in theta (pixel-local) space are:
 
     0. logmass
     1. logZZsol
@@ -28,7 +28,7 @@ class ThreeParamLnProb(object):
     5. dust1
     6. dust2
 
-    Parameters in phi are:
+    Parameters in phi (global) are:
 
     0. d
     """
@@ -65,7 +65,18 @@ class ThreeParamLnProb(object):
 
     @property
     def ndim(self):
+        """Number of dimensions in theta (pixel-level) parameter space."""
         return len(self._param_names)
+
+    @property
+    def nbands(self):
+        """Number of *observed* bandpasses in the likelihood."""
+        return len(self._bands)
+
+    @property
+    def ndim_phi(self, arg1):
+        """Number of global parameters"""
+        return 1.
 
     def reset_pixel(self, obs_sed, obs_err, priors):
         """Change observation and priors for a new pixel."""

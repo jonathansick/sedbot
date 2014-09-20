@@ -6,6 +6,9 @@ star formation histories and a global scalar background that effects all
 pixels.
 """
 
+import numpy as np
+import emcee
+
 
 class MultiPixelGibbsBgModeller(object):
     """Runs a Gibbs sampler that alternates between sampling pixels and
@@ -48,10 +51,17 @@ class MultiPixelGibbsBgModeller(object):
         self._n_pixel_walkers = n_pixel_walkers
         self._n_global_walkers = n_global_walkers
 
+        self._n_pix = self._obs_seds.shape[0]
+
+        # Hack, just get priors from pixel_lnpost; in principle we want to
+        # store a different set of priors for each pixel
+        self._pixel_priors = self._pixel_lnpost._priors
+
     def sample(self,
                theta0, bg0, d0,
                n_iters,
                n_pixel_steps=10,
+               n_global_steps=10,
                n_cpu=None):
         """Make samples
 
@@ -72,7 +82,18 @@ class MultiPixelGibbsBgModeller(object):
         n_cpu : int
             Number of parallel cores to run on
         """
-        # Initialize the posterior chains
+        # Pre-allocate memory for the posterior chains (theta, phi, B)
+        n_samples = n_iters * (self._n_pixel_walkers * n_pixel_steps
+                               + self._n_global_walkers * n_global_steps
+                               + 1)
+        self._theta_chain = np.empty((n_samples, self._pixel_lnpost.ndim),
+                                     np.float)
+        self._B_chain = np.empty((n_samples, self._pixel_lnpost.nbands),
+                                 np.float)
+        self._phi_chain = np.empty((n_samples, self._pixel_lnpost.ndim_phi),
+                                   np.float)
+
+        # Gibbs Sampling
         for j in xrange(n_iters):
             # Step 1. Send jobs out to each pixel to sample the stellar pop
             # in each pixel given the last parameter estimates.
@@ -88,7 +109,16 @@ class MultiPixelGibbsBgModeller(object):
     def _sample_pixel_posterior(self):
         """Sample the parameters at the level of each pixel."""
         # Set up an emcee run for each pixel
-        pass
+        for i in xrange(self._n_pix):
+            self._pixel_lnpost.reset_pixel(self._obs_seds[i, :],
+                                           self._obs_errs[i, :],
+                                           self._pixel_priors)
+            sampler = emcee.EnsembleSampler(
+                self._n_pixel_walkers,
+                self._pixel_lnpost.ndim,
+                self._pixel_lnpost,
+                args=(B_i, phi_i))
+            # TODO persist sampler.flatchain
 
     def _sample_global_posterior(self):
         """Sample from parameters at the global level in a single MCMC run."""
