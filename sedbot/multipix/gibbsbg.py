@@ -23,10 +23,14 @@ class MultiPixelGibbsBgModeller(object):
     sed_errs : ndarray
         An ``(n_pixel, n_band)`` shape array of SEDs uncertainties for each
         pixel, in units of µJy.
-    pixel_lnpost : instance
-        A lnpost function for pixel-level MCMC.
-    global_lnpost : instance
-        A lnpost function for global-level MCMC.
+    bands : list
+        List of python-fsps band names, corresponding to the ``seds`` array.
+    pixel_lnpost_class : class
+        A class that, when initialized, provides a callable pixel posterior
+        probability function.
+    global_lnpost_class : class
+        A class that, when initialized, provides a callable global posterior
+        probability function.
     theta_init_sigma : ndarray
         Array of standard deviations to create a start distribution for the
         per-pixel theta parameters.
@@ -37,16 +41,22 @@ class MultiPixelGibbsBgModeller(object):
         Number of emcee walkers for pixel-level MCMC
     n_global_walkers : int
         Number of emcee walkers for global-level MCMC
+    fsps_compute_bands : list
+        (Optional) list of all bands to compute and persist with the chain.
     """
-    def __init__(self, seds, sed_errs,
-                 pixel_lnpost, global_lnpost,
+    def __init__(self, seds, sed_errs, bands,
+                 pixel_lnpost_class, global_lnpost_class,
                  theta_init_sigma, phi_init_sigma,
                  n_pixel_walkers=100,
-                 n_global_walkers=100):
+                 n_global_walkers=100,
+                 fsps_compute_bands=None):
         super(MultiPixelGibbsBgModeller, self).__init__()
         self._obs_seds = seds
         self._obs_errs = sed_errs
-        self._pixel_lnpost = pixel_lnpost
+        self._obs_bands = bands
+        self._fsps_compute_bands = fsps_compute_bands
+
+        self._pixel_lnpost_class = pixel_lnpost_class
         self._theta_init_sigma = theta_init_sigma
         self._phi_init_sigma = phi_init_sigma
         self._n_pixel_walkers = n_pixel_walkers
@@ -118,7 +128,7 @@ class MultiPixelGibbsBgModeller(object):
             # Step 3. Sample the background
             self._recompute_background()
 
-    def _build_pool(self, n_cpu):
+    def _init_pool(self, n_cpu):
         """Build an ipython.parallel pool of CPUs to compute likelihoods.
 
         Recall that the number of nodes is defined
@@ -128,22 +138,25 @@ class MultiPixelGibbsBgModeller(object):
 
         # Here we send objects to each compute server. These make up the
         # environment for using python-fsps
-        dview.push({"PIXEL_LNPOST": PIXEL_LNPOST,
-                    "init_pixel_lnpost": init_pixel_lnpost,
-                    "sample_phi": sample_phi})
+        self._pool.push({"PIXEL_LNPOST_CLASS": self._pixel_lnpost_class,
+                         "OBS_BANDS": self._obs_bands,
+                         "FSPS_COMPUTE_BANDS": self._fsps_compute_bands,
+                         "init_pixel_lnpost": init_pixel_lnpost,
+                         "sample_phi": sample_phi})
 
         # Sync import statements
-        dview.execute("import numpy as np")
-        dview.execute("import emcee")
-        dview.execute("import fsps")
-        dview.execute("import fsps")
-        dview.execute("from sedbot.photconv import abs_ab_mag_to_mjy")
-        dview.execute("from sedbot.zinterp import bracket_logz, interp_logz")
+        self._pool.execute("import numpy as np")
+        self._pool.execute("import emcee")
+        self._pool.execute("import fsps")
+        self._pool.execute("import fsps")
+        self._pool.execute("from sedbot.photconv import abs_ab_mag_to_mjy")
+        self._pool.execute("from sedbot.zinterp import bracket_logz")
+        self._pool.execute("from sedbot.zinterp import interp_logz")
 
-        # initialize a global StellarPopulation
-        dview.execute("SP = None")
-        dview.execute("init_fsps()")
-        return dview
+        # initialize the pixel posterior
+        self._pool.execute("PIXEL_LNPOST = None")
+        self._pool.execute("init_pixel_lnpost(PIXEL_LNPOST_CLASS, OBS_BANDS, "
+                           "fsps_compute_bands=FSPS_COMPUTE_BANDS)")
 
     def _sample_pixel_posterior(self, n_steps):
         """Sample the parameters at the level of each pixel."""
