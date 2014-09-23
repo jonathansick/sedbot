@@ -98,6 +98,10 @@ class MultiPixelGibbsBgModeller(object):
         if parallel:
             # Build pool of posterior calculators
             self._build_pool()
+        else:
+            # Initialize a PIXEL_LNPOST locally to compute the pixel posterior
+            # probability
+            self._init_local_lnpost()
 
         # Pre-allocate memory for the posterior chains (theta, phi, B)
         n_samples = n_iters * (self._n_pixel_walkers * n_pixel_steps
@@ -120,7 +124,7 @@ class MultiPixelGibbsBgModeller(object):
             # Step 1. Send jobs out to each pixel to sample the stellar pop
             # in each pixel given the last parameter estimates.
             # get the parameter chain for each pixel and the model flux
-            self._sample_pixel_posterior(n_pixel_steps)
+            self._sample_pixel_posterior(n_pixel_steps, parallel)
 
             # Step 2. Sample a new distance.
             self._sample_global_posterior()
@@ -158,7 +162,11 @@ class MultiPixelGibbsBgModeller(object):
         self._pool.execute("init_pixel_lnpost(PIXEL_LNPOST_CLASS, OBS_BANDS, "
                            "fsps_compute_bands=FSPS_COMPUTE_BANDS)")
 
-    def _sample_pixel_posterior(self, n_steps):
+    def _init_local_lnpost(self):
+        init_pixel_lnpost(self._pixel_lnpost_class, self._obs_bands,
+                          fsps_compute_bands=self._fsps_compute_bands)
+
+    def _sample_pixel_posterior(self, n_steps, parallel):
         """Sample the parameters at the level of each pixel."""
         # Grab last values of B and phi
         B_i = self._B[self._last_i, :]
@@ -172,7 +180,7 @@ class MultiPixelGibbsBgModeller(object):
             arg = (obs_sed, obs_err, priors, B_i, phi_i,
                    self._n_walkers, n_steps)
             args.append(arg)
-        if self._n_cpu == 1:
+        if not parallel:
             results = map(sample_phi, args)
         else:
             results = self._pool.map(sample_phi, args)
