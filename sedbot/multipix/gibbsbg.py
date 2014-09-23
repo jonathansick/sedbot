@@ -8,6 +8,7 @@ pixels.
 
 import numpy as np
 import emcee
+from IPython.parallel import Client
 
 
 class MultiPixelGibbsBgModeller(object):
@@ -55,14 +56,14 @@ class MultiPixelGibbsBgModeller(object):
 
         # Hack, just get priors from pixel_lnpost; in principle we want to
         # store a different set of priors for each pixel
-        self._pixel_priors = self._pixel_lnpost._priors
+        self._pixel_priors = [self._pixel_lnpost._priors] * self._n_pix
 
     def sample(self,
                theta0, bg0, d0,
                n_iters,
                n_pixel_steps=10,
                n_global_steps=10,
-               n_cpu=None):
+               parallel=False):
         """Make samples
 
         Parameters
@@ -79,26 +80,37 @@ class MultiPixelGibbsBgModeller(object):
             Number of steps to make in pixel space
         n_global_steps : int
             Number of steps to make in the global parameter space.
-        n_cpu : int
-            Number of parallel cores to run on
+        parallel : bool
+            True if iPython.parallel should be used to distribute work.
+            Note that the cluster should be setup with a
+            ``ipcluster start -n <n cpu>`` command.
         """
+        if parallel:
+            # Build pool of posterior calculators
+            self._build_pool()
+
         # Pre-allocate memory for the posterior chains (theta, phi, B)
         n_samples = n_iters * (self._n_pixel_walkers * n_pixel_steps
                                + self._n_global_walkers * n_global_steps
                                + 1)
-        self._theta_chain = np.empty((n_samples, self._pixel_lnpost.ndim),
+        self._theta_chain = np.empty((n_samples,
+                                      self._pixel_lnpost.ndim,
+                                      self._n_pix),
                                      np.float)
         self._B_chain = np.empty((n_samples, self._pixel_lnpost.nbands),
                                  np.float)
         self._phi_chain = np.empty((n_samples, self._pixel_lnpost.ndim_phi),
                                    np.float)
 
+        # TODO add the initial guess as the zeroth elements of these arrays
+        self._last_i = 0
+
         # Gibbs Sampling
         for j in xrange(n_iters):
             # Step 1. Send jobs out to each pixel to sample the stellar pop
             # in each pixel given the last parameter estimates.
             # get the parameter chain for each pixel and the model flux
-            self._sample_pixel_posterior()
+            self._sample_pixel_posterior(n_pixel_steps)
 
             # Step 2. Sample a new distance.
             self._sample_global_posterior()
@@ -106,24 +118,99 @@ class MultiPixelGibbsBgModeller(object):
             # Step 3. Sample the background
             self._recompute_background()
 
-    def _sample_pixel_posterior(self):
-        """Sample the parameters at the level of each pixel."""
-        # Set up an emcee run for each pixel
-        for i in xrange(self._n_pix):
-            self._pixel_lnpost.reset_pixel(self._obs_seds[i, :],
-                                           self._obs_errs[i, :],
-                                           self._pixel_priors)
-            sampler = emcee.EnsembleSampler(
-                self._n_pixel_walkers,
-                self._pixel_lnpost.ndim,
-                self._pixel_lnpost,
-                args=(B_i, phi_i))
-            # TODO persist sampler.flatchain
+    def _build_pool(self, n_cpu):
+        """Build an ipython.parallel pool of CPUs to compute likelihoods.
 
-    def _sample_global_posterior(self):
+        Recall that the number of nodes is defined
+        """
+        c = Client()
+        self._pool = c[:]  # a DirectView object
+
+        # Here we send objects to each compute server. These make up the
+        # environment for using python-fsps
+        dview.push({"PIXEL_LNPOST": PIXEL_LNPOST,
+                    "init_pixel_lnpost": init_pixel_lnpost,
+                    "sample_phi": sample_phi})
+
+        # Sync import statements
+        dview.execute("import numpy as np")
+        dview.execute("import emcee")
+        dview.execute("import fsps")
+        dview.execute("import fsps")
+        dview.execute("from sedbot.photconv import abs_ab_mag_to_mjy")
+        dview.execute("from sedbot.zinterp import bracket_logz, interp_logz")
+
+        # initialize a global StellarPopulation
+        dview.execute("SP = None")
+        dview.execute("init_fsps()")
+        return dview
+
+    def _sample_pixel_posterior(self, n_steps):
+        """Sample the parameters at the level of each pixel."""
+        # Grab last values of B and phi
+        B_i = self._B[self._last_i, :]
+        phi_i = self._phi[self._last_i, :]
+        # Construct arguments for sample_phi() for each pixel
+        args = []
+        for i in xrange(self._n_pix):
+            obs_sed = self._obs_seds[i, :]
+            obs_err = self._obs_errs[i, :]
+            priors = self._pixel_priors[i]
+            arg = (obs_sed, obs_err, priors, B_i, phi_i,
+                   self._n_walkers, n_steps)
+            args.append(arg)
+        if self._n_cpu == 1:
+            results = map(sample_phi, args)
+        else:
+            results = self._pool.map(sample_phi, args)
+        # Append results to the flatchains
+        for i, result in enumerate(results):
+            chain, blob = result
+            j = self._last_i + 1
+            k = self._last_i + 1 + n_steps
+            self._theta_chain[j:k, :, i] = chain
+            # TODO persist the blobs
+
+        self._last_i += n_steps
+
+    def _sample_global_posterior(self, n_steps):
         """Sample from parameters at the global level in a single MCMC run."""
         pass
 
+        self._last_sample_index += n_steps
+
     def _recompute_background(self):
         """Linear estimate of the background."""
-        pass
+        self._last_sample_index += 1
+
+
+PIXEL_LNPOST = None
+
+
+def init_pixel_lnpost(lnpost_cls, fsps_params, obs_bands,
+                      fsps_compute_bands=None):
+    """Initialize the per-pixel ln posterior probability functions on each
+    server (for parallel computing; or just for the local module for
+    non-parallel computing.
+    """
+    global PIXEL_LNPOST
+    PIXEL_LNPOST = lnpost_cls(fsps_params, obs_bands,
+                              fsps_compute_bands=fsps_compute_bands)
+
+
+def sample_phi(args):
+    """Run an emcee sampler in the theta (per pixel) space.
+
+    This sampler is extracted into separate function so that it may be called
+    by a parallel map function.
+    """
+    global PIXEL_LNPOST
+    obs_sed, obs_errs, priors, B, phi, n_walkers, n_steps = args
+    PIXEL_LNPOST.reset_pixel(obs_sed, obs_errs, priors)
+    sampler = emcee.EnsembleSampler(
+        n_walkers, PIXEL_LNPOST.ndim, PIXEL_LNPOST, args=(B, phi))
+    # TODO create the seed distribution
+    # TODO create samples
+    flatchain = sampler.flatchain
+    blob = sampler.blob
+    return flatchain, blob
