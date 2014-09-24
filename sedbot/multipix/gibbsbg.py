@@ -116,6 +116,12 @@ class MultiPixelGibbsBgModeller(object):
         self._phi_chain = np.empty((n_samples, self._pixel_lnpost.ndim_phi),
                                    np.float)
 
+        # Ask the posterior class to initialize the blob
+        # We make a different blob chain for each pixel.
+        self._blobs = [PIXEL_LNPOST.init_blob_chain(self._n_pixel_walkers,
+                                                    n_samples)
+                       for i in xrange(self._n_pix)]
+
         # Make an initial point for the local posterior chain
         # **for each pixel**
         # Shape of chain: (nwalkers, nlinks, dim)
@@ -125,8 +131,6 @@ class MultiPixelGibbsBgModeller(object):
             p0 = self._theta_init_sigma \
                 * np.random.rand(PIXEL_LNPOST.ndim * self._n_pixel_walkers)\
                 .reshape((self._n_pixel_walkers, PIXEL_LNPOST.ndim))
-            # s = self.chain.shape
-            # self.chain.reshape(s[0] * s[1], s[2])
             self._theta_chain[0, :, i] = p0
 
         # Make an initial point for the global posterior chain
@@ -203,11 +207,13 @@ class MultiPixelGibbsBgModeller(object):
             results = self._pool.map(sample_phi, args)
         # Append results to the flatchains
         for i, result in enumerate(results):
-            chain, blob = result
+            chain, blobs = result
             j = self._last_i + 1
             k = self._last_i + 1 + n_steps
             self._theta_chain[j:k, :, i] = chain
-            # TODO persist the blobs
+            # persist the blobs using the posterior function
+            # i.e. there is a separate blob chain for each pixel
+            PIXEL_LNPOST.append_blobs(j, self._blobs[i], blobs)
 
         self._last_i += n_steps
 
@@ -264,9 +270,10 @@ def sample_phi(args):
     Returns
     -------
     flatchain : ndarray
-        The flatchain
-    blob : ndarray
-        Metadata associated with the flatchain.
+        The flattened chain.
+    blobs : ndarray
+        Metadata associated with the flatchain. This is a list of length
+        ``n_steps``, where each item is of length ``n_walkers``.
     """
     global PIXEL_LNPOST
     obs_sed, obs_errs, priors, B, phi, p0, n_walkers, n_steps = args
@@ -275,5 +282,5 @@ def sample_phi(args):
         n_walkers, PIXEL_LNPOST.ndim, PIXEL_LNPOST, args=(B, phi))
     sampler.run_mcmc(p0, n_steps)
     flatchain = sampler.flatchain
-    blob = sampler.blob
-    return flatchain, blob
+    blobs = sampler.blobs
+    return flatchain, blobs

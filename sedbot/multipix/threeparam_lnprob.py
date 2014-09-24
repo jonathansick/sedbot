@@ -153,3 +153,47 @@ class ThreeParamLnProb(object):
         blob = (lnpost, log_m_star, log_m_dust, log_lbol, log_sfr, log_age,
                 model_mjy)
         return lnpost, blob
+
+    def init_blob_chain(self, n):
+        """Creates a blob chain record array that the calling function can
+        store.
+
+        Parameters
+        ----------
+        n : int
+            Length of the blob chain. This should be the total length of
+            the flatchain.
+
+        Returns
+        -------
+        blob_chain : ndarray
+            An empty blob chain.
+        """
+        dt = [('lnpost', np.float),
+              ('logMstar', np.float),
+              ('logMdust', np.float),
+              ('logSFR', np.float),
+              ('logLbol', np.float),
+              ('logAge', np.float),
+              ('model_mjy', np.float, self.nbands)]
+        blob_chain = np.nan * np.empty(n, dtype=np.dtype(dt))
+        return blob_chain
+
+    def append_blobs(self, i, blob_chain, blobs):
+        """Append the ``blobs`` list to the ``blob_chain`` created
+        by :meth:`init_blob_chain`.
+
+        Parameters
+        ----------
+        i : int
+            First index along ``blob_chain`` to write into (i.e., current
+            step x number of walkers).
+        blob_chain : ndarray
+            An array created by :meth:`init_blob_chain`.
+        blobs : list
+            The blobs list returned by the posterior function.
+        """
+        for step_blobs in blobs:
+            for b in step_blobs:
+                blob_chain['lnpost'][i] = b[0]
+                i += 1
