@@ -243,6 +243,10 @@ class GlobalThreeParamLnProb(ThreeParamLnProb):
         self._priors = priors
         self._param_names = ['d']
 
+    @property
+    def ndim(self):
+        return 1
+
     def __call__(self, phi, thetas, B):
         """Compute the ln posterior probability.
 
