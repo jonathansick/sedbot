@@ -85,14 +85,31 @@ class ThreeParamLnProb(object):
         self._priors = priors
 
     def __call__(self, theta, B, phi):
-        """Compute the ln posterior probability."""
+        """Compute the ln posterior probability.
+
+        Parameters
+        ----------
+        theta : ndarray
+            The theta parameters, shape ``(n_theta_params,)``.
+        B : ndarray
+            The background parameters, shape ``(n_bands,)``.
+        phi : ndarray
+            The phi parameter space, here, just a 1D ndarray with d (parsecs).
+
+        Returns
+        -------
+        ln_post : float
+            The ln-posterior probablity.
+        blob : list
+            The blob metadata.
+        """
         # Physically we'd expect dust1 > dust2 if young stars are more embedded
         if theta[5] < theta[6]:
             return -np.inf, np.nan
 
         # Evaluate priors
         lnprior = 0.
-        for i, name in enumerate(self.param_names):
+        for i, name in enumerate(self._param_names):
             lnprior += self._priors[name](theta[i])
         if not np.isfinite(lnprior):
             return -np.inf, np.nan
@@ -197,3 +214,90 @@ class ThreeParamLnProb(object):
             for b in step_blobs:
                 blob_chain['lnpost'][i] = b[0]
                 i += 1
+
+
+class GlobalThreeParamLnProb(ThreeParamLnProb):
+    """Global-level version of the :class:`ThreeParamLnProb` to sample in
+    the phi parameter space.
+
+    Parameters
+    ----------
+    fsps_params : dict
+        Parameters to initialize the python-fsps `StellarPopulation` with.
+    obs_bands : list
+        FSPS bandpass names that matches the `obs_seds` array.
+    obs_seds : ndarray
+        A ``(n_pix, n_bands)`` array of all SEDs.
+    obs_errs : ndarray
+        A ``(n_pix, n_bands)`` array of all SED uncertainties.
+    priors : list
+        A list of prior functions. For this model is is simply a prior on
+        distance.
+    """
+    def __init__(self, fsps_params, obs_bands, obs_seds, obs_errs, priors):
+        super(GlobalThreeParamLnProb, self).__init__()
+        self._sp = fsps.StellarPopulation(**fsps_params)
+        self._bands = obs_bands
+        self._obs_seds = obs_seds
+        self._obs_errs = obs_errs
+        self._priors = priors
+        self._param_names = ['d']
+
+    def __call__(self, phi, thetas, B):
+        """Compute the ln posterior probability.
+
+        Parameters
+        ----------
+        phi : ndarray
+            The phi parameter space, here, just a 1D ndarray with d (parsecs).
+        thetas : ndarray
+            The theta (pixel) parameters, shape ``(n_pix, n_theta_params)``.
+        B : ndarray
+            The background parameters, shape ``(n_bands,)``.
+
+        Returns
+        -------
+        ln_post : float
+            The ln-posterior probablity.
+        """
+        lnprior = 0.
+        for i, name in enumerate(self._param_names):
+            lnprior += self._priors[name](phi[i])
+        if not np.isfinite(lnprior):
+            return -np.inf
+        joint_ln_likelihood = 0.
+        for i in self._obs_seds.shape[0]:
+            joint_ln_likelihood += self._single_pixel_ln_likelihood(
+                i, thetas[i, :], B, phi)
+        return lnprior + joint_ln_likelihood
+
+    def _single_pixel_ln_likelihood(self, i, theta, B, phi):
+        """Compute likelihood against a single pixel ``i``."""
+        # Evaluate the ln-likelihood function by interpolating between
+        # metallicty bracket
+        logm = theta[0]  # logmass
+        logZZsol = theta[1]
+        self._sp.params['tau'] = 10. ** theta[2]
+        self._sp.params['const'] = theta[3]
+        self._sp.params['sf_start'] = theta[4]
+        self._sp.params['dust1'] = theta[5]
+        self._sp.params['dust2'] = theta[6]
+        zmet1, zmet2 = bracket_logz(logZZsol)
+        # Compute fluxes with low metallicity
+        self._sp.params['zmet'] = zmet1
+        f1 = abs_ab_mag_to_mjy(
+            self._sp.get_mags(tage=13.8, bands=self._obs_bands),
+            phi[0])
+        # Compute fluxes with high metallicity
+        self._sp.params['zmet'] = zmet2
+        f2 = abs_ab_mag_to_mjy(
+            self._sp.get_mags(tage=13.8, bands=self._obs_bands),
+            phi[0])
+
+        # Interpolate and scale the SED by mass
+        model_mjy = 10. ** logm * interp_logz(zmet1, zmet2, logZZsol, f1, f2)
+
+        # Compute likelihood
+        L = -0.5 * np.sum(np.power((model_mjy + B
+                                    - self._obs_sed) / self._obs_err, 2.))
+        return L
