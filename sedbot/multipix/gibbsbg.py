@@ -257,12 +257,58 @@ class MultiPixelGibbsBgModeller(object):
         # repeat B and theta in their respective chains
         self._theta_chain[j:k, :, :] = self._theta_chain[j - 1, :, :]
         self._B_chain[j:k, :] = self._B_chain[j - 1, :]
+        # FIXME Replicate blob data too (needed for background estimate)
 
         self._last_i += n_steps * self._n_global_walkers
 
     def _recompute_background(self):
-        """Linear estimate of the background."""
-        self._last_sample_index += 1
+        """Linear estimate of the background.
+
+        The background is modelled, for each pixel, as
+
+        .. math::
+           \langle B \rangle_n = F_n - f(\theta_{n, i}, \phi_i)
+
+        Given Gaussian uncertainties in $F_n$, these estimates of
+        $\langle B \rangle_n$ are themselves generated from a normal
+        distribution:
+
+        .. math::
+           N\left(\frac{\sum_n \frac{\langle B \rangle_n}{\sigma_n^2}}
+           {\sum_n \frac{1}{\sigma_n^2}}, \frac{1}{\sum_n \sigma_n^{-2}}\right)
+
+        (see http://en.wikipedia.org/wiki/
+        Weighted_arithmetic_mean#Dealing_with_variance)
+
+        Hence we can produce the next sample of $B$ by simply drawing from
+        this normal distribution.
+        """
+        B_est = np.nan * np.empty((self._n_pix, PIXEL_LNPOST.nbands),
+                                  dtype=np.float)
+        for i in self._n_pix:
+            # FIXME the lnpost needs to compute this because it knows
+            # - where in the blob the model_sed is stored
+            # - how to map modelel_sed to obs_sed bandpasses
+            B_est[i, :] = PIXEL_LNPOST.estimate_backgrounds(
+                self._obs_seds[i, :], self._blobs[i])
+
+        # Estimate Normal Distribution to sample from
+        # (vectors of length n_bands)
+        # FIXME check axis
+        means = np.sum(B_est / self._obs_errs ** 2., axis=0) \
+            / np.sum(self._obs_errs ** -2., axis=0)
+        sigmas = np.sqrt(1. / np.sum(self._obs_errs ** -2., axis=0))
+
+        # Sample from Gaussian to draw
+        B_proposed = sigmas * np.random.randn(PIXEL_LNPOST.nbands) + means
+        j = self._i_last + 1
+        self._B_chain[j, :] = B_proposed
+
+        # Repeat theta and phi values in the chain
+        self._phi_chain[j, :] = self._phi_chain[j - 1, :]
+        self._theta_chain[j, :, :] = self._theta_chain[j - 1, :, :]
+
+        self._last_i += 1
 
 
 PIXEL_LNPOST = None
