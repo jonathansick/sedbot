@@ -287,7 +287,8 @@ class MultiPixelGibbsBgModeller(object):
         B_est = np.nan * np.empty((self._n_pix, PIXEL_LNPOST.nbands),
                                   dtype=np.float)
         for i in self._n_pix:
-            # FIXME the lnpost needs to compute this because it knows
+            # Compute background estimate
+            # the lnpost needs to compute this because it knows
             # - where in the blob the model_sed is stored
             # - how to map modelel_sed to obs_sed bandpasses
             B_est[i, :] = PIXEL_LNPOST.estimate_backgrounds(

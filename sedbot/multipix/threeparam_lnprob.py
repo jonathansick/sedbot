@@ -215,6 +215,13 @@ class ThreeParamLnProb(object):
                 blob_chain['lnpost'][i] = b[0]
                 i += 1
 
+    def _estimate_backgrounds(self, obs_sed, blob):
+        """Estimate the background in the observed SED given the model SED
+        in the blob.
+        """
+        model_sed = blob[6][self._band_indices]
+        return obs_sed - model_sed
+
 
 class GlobalThreeParamLnProb(ThreeParamLnProb):
     """Global-level version of the :class:`ThreeParamLnProb` to sample in
