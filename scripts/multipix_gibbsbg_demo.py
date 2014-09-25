@@ -14,6 +14,10 @@ from sedbot.photconv import sb_to_mass, ab_mag_to_mjy, mjy_to_ab_sb
 
 from sedbot.probf import LnUniform, LnNormal
 
+from sedbot.multipix.gibbsbg import MultiPixelGibbsBgModeller
+from sedbot.multipix.threeparam_lnprob import ThreeParamLnProb, \
+    GlobalThreeParamLnProb
+
 N_PIXELS = 5
 BANDS = ['sdss_u', 'sdss_g', 'sdss_r', 'sdss_i', '2mass_J', '2mass_Ks']
 D0 = 785. * 1000.  # distance in parsecs (McConnachie 2005)
@@ -49,7 +53,7 @@ PRIOR_FUNCS = {"logtau": LnUniform(*LIMITS['logtau']),
 # Truth dictionary
 # Note that all pixels share the same background bias, which is different
 # in each band.
-TRUTHS = {"B": np.array([1e-12, -5e-10, -7e-10, 1.2e-10, -1.5e-10, 1.8e-9]),
+TRUTHS = {"B": np.array([1e-1, -5e-1, -7e-1, 1.2e-1, -1.5e-1, 1.8e-1]),
           "d": D0,
           'logmass': sb_to_mass(np.linspace(15., 22., N_PIXELS),
                                 MSUN_I, PIX_AREA, 0.4, D0),
@@ -96,7 +100,7 @@ SIGMA0 = {'logtau': 0.1,
           'fburst': 0.1,
           'logZZsol': 0.1,
           'logmass': 0.1,
-          'd': 0.5 * D0_SIGMA,
+          'd': 0.1 * D0_SIGMA,
           'dust1': 0.1,
           'dust2': 0.1}
 
@@ -106,8 +110,37 @@ PARAM_NAMES = ['logmass', 'logZZsol', 'sf_start', 'logtau', 'const', 'dust1',
 
 
 def main():
-    sed, sed_err = build_test_data(N_PIXELS, BANDS)
-    print "Model SB", mjy_to_ab_sb(sed, PIX_AREA)
+    seds, sed_errs = build_test_data(N_PIXELS, BANDS)
+    print "Model SB", mjy_to_ab_sb(seds, PIX_AREA)
+    print "Model SED", seds
+    print "Sky error percent"
+    print TRUTHS['B'] / seds * 100.
+
+    theta_init_sigma = np.array(SIGMA0[n] for n in PARAM_NAMES)  # HACK
+    phi_init_sigma = np.array([SIGMA0['d']])
+
+    # But the truths back in as theta0/phi0/B0 since we just want to make
+    # sure the method works, not necessarily that it converges quite yet.
+    theta0 = np.empty((N_PIXELS, len(PARAM_NAMES)), dtype=np.float)
+    for i in xrange(N_PIXELS):
+        for j, n in enumerate(PARAM_NAMES):
+            if isinstance(TRUTHS[n], float):
+                theta0[i, j] = TRUTHS[n]
+            else:
+                theta0[i, j] = TRUTHS[n][i]
+    phi0 = np.empty((1,), dtype=np.float)
+    phi0[0] = TRUTHS['d']
+    B0 = np.copy(TRUTHS['B'])
+
+    sampler = MultiPixelGibbsBgModeller(
+        seds, sed_errs, BANDS,
+        ThreeParamLnProb, GlobalThreeParamLnProb,
+        [PRIOR_FUNCS] * N_PIXELS,
+        PRIOR_FUNCS,
+        theta_init_sigma,
+        phi_init_sigma,
+        PSET_INIT)
+    sampler.sample(theta0, B0, phi0, 2, parallel=False)
 
 
 def build_test_data(n_pixels, bands):
