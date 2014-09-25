@@ -257,7 +257,8 @@ class MultiPixelGibbsBgModeller(object):
         # repeat B and theta in their respective chains
         self._theta_chain[j:k, :, :] = self._theta_chain[j - 1, :, :]
         self._B_chain[j:k, :] = self._B_chain[j - 1, :]
-        # FIXME Replicate blob data too (needed for background estimate)
+        # Replicate blob data too (needed for background estimate)
+        self._replicate_blob_chain(j - 1, range(j, k))
 
         self._last_i += n_steps * self._n_global_walkers
 
@@ -307,8 +308,14 @@ class MultiPixelGibbsBgModeller(object):
         # Repeat theta and phi values in the chain
         self._phi_chain[j, :] = self._phi_chain[j - 1, :]
         self._theta_chain[j, :, :] = self._theta_chain[j - 1, :, :]
+        # Replicate blob data too
+        self._replicate_blob_chain(j - 1, [j])
 
         self._last_i += 1
+
+    def _replicate_blob_chain(self, source_step, target_steps):
+        for j in xrange(self._n_pix):
+            self._blobs[j][target_steps] = source_step
 
 
 PIXEL_LNPOST = None
