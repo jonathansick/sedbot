@@ -116,7 +116,7 @@ def main():
     print "Sky error percent"
     print TRUTHS['B'] / seds * 100.
 
-    theta_init_sigma = np.array(SIGMA0[n] for n in PARAM_NAMES)  # HACK
+    theta_init_sigma = np.array([SIGMA0[n] for n in PARAM_NAMES])  # HACK
     phi_init_sigma = np.array([SIGMA0['d']])
 
     # But the truths back in as theta0/phi0/B0 since we just want to make

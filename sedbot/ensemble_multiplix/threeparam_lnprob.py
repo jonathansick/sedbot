@@ -74,7 +74,7 @@ class ThreeParamLnProb(object):
         return len(self._bands)
 
     @property
-    def ndim_phi(self, arg1):
+    def ndim_phi(self):
         """Number of global parameters"""
         return 1.
 
@@ -171,29 +171,32 @@ class ThreeParamLnProb(object):
                 model_mjy)
         return lnpost, blob
 
-    def init_blob_chain(self, n):
+    def init_blob_chain(self, n_steps, n_walkers):
         """Creates a blob chain record array that the calling function can
         store.
 
         Parameters
         ----------
-        n : int
+        n_steps : int
             Length of the blob chain. This should be the total length of
-            the flatchain.
+            the chain.
+        n_walkers : int
+            Number of walkers
 
         Returns
         -------
         blob_chain : ndarray
             An empty blob chain.
         """
-        dt = [('lnpost', np.float),
-              ('logMstar', np.float),
-              ('logMdust', np.float),
-              ('logSFR', np.float),
-              ('logLbol', np.float),
-              ('logAge', np.float),
-              ('model_mjy', np.float, self.nbands)]
-        blob_chain = np.nan * np.empty(n, dtype=np.dtype(dt))
+        dt = [('lnpost', np.float, n_walkers),
+              ('logMstar', np.float, n_walkers),
+              ('logMdust', np.float, n_walkers),
+              ('logSFR', np.float, n_walkers),
+              ('logLbol', np.float, n_walkers),
+              ('logAge', np.float, n_walkers),
+              ('model_mjy', np.float, (n_walkers, self.nbands))]
+        blob_chain = np.empty(n_steps, dtype=np.dtype(dt))
+        blob_chain.fill(np.nan)
         return blob_chain
 
     def append_blobs(self, i, blob_chain, blobs):
@@ -204,23 +207,31 @@ class ThreeParamLnProb(object):
         ----------
         i : int
             First index along ``blob_chain`` to write into (i.e., current
-            step x number of walkers).
+            step).
         blob_chain : ndarray
             An array created by :meth:`init_blob_chain`.
         blobs : list
             The blobs list returned by the posterior function.
         """
-        for step_blobs in blobs:
-            for b in step_blobs:
-                blob_chain['lnpost'][i] = b[0]
-                i += 1
+        for i_step, step_blobs in enumerate(blobs):
+            j = i_step + i
+            for i_walker, b in enumerate(step_blobs):
+                blob_chain['lnpost'][j, i_walker] = b[0]
+                blob_chain['logMstar'][j, i_walker] = b[1]
+                blob_chain['logMdust'][j, i_walker] = b[2]
+                blob_chain['logSFR'][j, i_walker] = b[3]
+                blob_chain['logLbol'][j, i_walker] = b[4]
+                blob_chain['logAge'][j, i_walker] = b[5]
+                blob_chain['model_mjy'][j, i_walker, :] = b[6]
 
-    def _estimate_backgrounds(self, obs_sed, blob):
+    def _estimate_backgrounds(self, i, obs_sed, blob):
         """Estimate the background in the observed SED given the model SED
         in the blob.
         """
-        model_sed = blob[6][self._band_indices]
-        return obs_sed - model_sed
+        model_sed = blob['model_mjy'][:, self._band_indices]
+        all_residuals = obs_sed - model_sed
+        residuals = all_residuals.mean(axis=0)  # average over walkers
+        return residuals
 
 
 class GlobalThreeParamLnProb(ThreeParamLnProb):

@@ -7,6 +7,7 @@ pixels.
 """
 
 import numpy as np
+from numpy.random import randn
 import emcee
 from IPython.parallel import Client
 
@@ -41,10 +42,10 @@ class MultiPixelGibbsBgModeller(object):
         global phi parameters (aside from B).
     fsps_params : dict
         Parameters to initialize the python-fsps StellarPopulation engine.
-    n_pixel_walkers : int
-        Number of emcee walkers for pixel-level MCMC
-    n_global_walkers : int
-        Number of emcee walkers for global-level MCMC
+    n_walkers : int
+        Number of emcee walkers to use in both pixel and global levels.
+    n_emcee_steps : int
+        Number of steps to make in each emcee call.
     fsps_compute_bands : list
         (Optional) list of all bands to compute and persist with the chain.
     """
@@ -53,8 +54,8 @@ class MultiPixelGibbsBgModeller(object):
                  theta_priors, phi_priors,
                  theta_init_sigma, phi_init_sigma,
                  fsps_params,
-                 n_pixel_walkers=100,
-                 n_global_walkers=100,
+                 n_walkers=100,
+                 n_emcee_steps=10,
                  fsps_compute_bands=None):
         super(MultiPixelGibbsBgModeller, self).__init__()
         self._obs_seds = seds
@@ -68,33 +69,30 @@ class MultiPixelGibbsBgModeller(object):
         self._pixel_lnpost_class = pixel_lnpost_class
         self._theta_init_sigma = theta_init_sigma
         self._phi_init_sigma = phi_init_sigma
-        self._n_pixel_walkers = n_pixel_walkers
-        self._n_global_walkers = n_global_walkers
+        self._n_walkers = n_walkers
+        self._n_emcee_steps = n_emcee_steps
 
         self._n_pix = self._obs_seds.shape[0]
 
     def sample(self,
-               theta0, bg0, d0,
+               theta0, B0, phi0,
                n_iters,
-               n_pixel_steps=10,
-               n_global_steps=10,
                parallel=False):
         """Make samples
 
         Parameters
         ----------
         theta0 : ndarray
-            Initial position of the stellar population (per-pixel) parameters
-        bg0 : ndarry
-            Initial position of the background estimate
-        d0 : ndarray
-            Initial position of the distance estimate
+            Initial position of the stellar population (per-pixel) parameters.
+            Should be of shape ``(npixel, ndim)``.
+        B0 : ndarry
+            Initial position of the background estimate.
+            Should be of shape ``(nband,)``.
+        phi0 : ndarray
+            Initial position of the phi-level parameters.
+            Should be of shape ``(ndim,)``.
         n_iters : int
             Number of Gibbs samples to make
-        n_pixel_steps : int
-            Number of steps to make in pixel space
-        n_global_steps : int
-            Number of steps to make in the global parameter space.
         parallel : bool
             True if iPython.parallel should be used to distribute work.
             Note that the cluster should be setup with a
@@ -108,39 +106,43 @@ class MultiPixelGibbsBgModeller(object):
             self._build_pool()
 
         # Pre-allocate memory for the posterior chains (theta, phi, B)
-        # The final 1 is for the zeroth sample
-        n_samples = n_iters * (self._n_pixel_walkers * n_pixel_steps
-                               + self._n_global_walkers * n_global_steps
-                               + 1) + 1
-        self._theta_chain = np.empty((n_samples,
+        # The first 1 is for the p0 initialization sample
+        n_samples = 1 + n_iters * (self._n_emcee_steps  # theta step
+                                   + self._n_emcee_steps  # phi step
+                                   + 1)  # B step
+        self._theta_chain = np.empty((self._n_walkers,
+                                      n_samples,
                                       PIXEL_LNPOST.ndim,
                                       self._n_pix),
-                                     np.float)
-        self._B_chain = np.empty((n_samples, PIXEL_LNPOST.nbands),
+                                     dtype=np.float)
+        self._B_chain = np.empty((n_samples,
+                                  PIXEL_LNPOST.nbands),
                                  np.float)
-        self._phi_chain = np.empty((n_samples, PIXEL_LNPOST.ndim_phi),
-                                   np.float)
+        self._phi_chain = np.empty((self._n_walkers,
+                                    n_samples,
+                                    GLOBAL_LNPOST.ndim_phi),
+                                   dtype=np.float)
 
         # Ask the posterior class to initialize the blob
         # We make a different blob chain for each pixel.
-        self._blobs = [PIXEL_LNPOST.init_blob_chain(self._n_pixel_walkers,
-                                                    n_samples)
+        self._blobs = [PIXEL_LNPOST.init_blob_chain(n_samples)
                        for i in xrange(self._n_pix)]
 
         # Make an initial point for the local posterior chain
         # **for each pixel**
-        # Shape of chain: (nwalkers, nlinks, dim)
-        # Shape of p0: (nwalkers, dim)
-        # Shape of flatchain: (nlinks, dim)
         for i in xrange(self._obs_seds.shape[0]):
-            p0 = self._theta_init_sigma \
-                * np.random.rand(PIXEL_LNPOST.ndim * self._n_pixel_walkers)\
-                .reshape((self._n_pixel_walkers, PIXEL_LNPOST.ndim))
-            self._theta_chain[0, :, i] = p0
+            for j in xrange(self._n_walkers):
+                p0 = self._theta_init_sigma * randn(PIXEL_LNPOST.ndim) \
+                    + theta0[j, :]
+                self._theta_chain[j, 0, :, i] = p0[:]
 
         # Make an initial point for the global posterior chain
-        p0 = self._phi_init_sigma * np.random.rand(GLOBAL_LNPOST.ndim
-                                                   * self._n_global_walkers)
+        for j in xrange(self._n_walkers):
+            p0 = self._phi_init_sigma * randn(GLOBAL_LNPOST.ndim) + phi0
+            self._phi_chain[j, 0, :] = p0[:]
+
+        # Set initial point for the B chain
+        self._B_chain[0, :] = B0
 
         # Initial guess is the zeroth elements of these posterior arrays
         self._last_i = 0
@@ -150,10 +152,10 @@ class MultiPixelGibbsBgModeller(object):
             # Step 1. Send jobs out to each pixel to sample the stellar pop
             # in each pixel given the last parameter estimates.
             # get the parameter chain for each pixel and the model flux
-            self._sample_pixel_posterior(n_pixel_steps, parallel)
+            self._sample_pixel_posterior(self._n_emcee_steps, parallel)
 
             # Step 2. Sample a new distance.
-            self._sample_global_posterior()
+            self._sample_global_posterior(self._n_emcee_steps)
 
             # Step 3. Sample the background
             self._recompute_background()
@@ -173,7 +175,7 @@ class MultiPixelGibbsBgModeller(object):
                          "FSPS_COMPUTE_BANDS": self._fsps_compute_bands,
                          "FSPS_PARAMS": self._fsps_params,
                          "init_pixel_lnpost": init_pixel_lnpost,
-                         "sample_phi": sample_phi})
+                         "sample_theta": sample_theta})
 
         # Sync import statements
         self._pool.execute("import numpy as np")
@@ -205,42 +207,47 @@ class MultiPixelGibbsBgModeller(object):
     def _sample_pixel_posterior(self, n_steps, parallel):
         """Sample the parameters at the level of each pixel."""
         # Grab last values of B and phi
-        B_i = self._B[self._last_i, :]
-        phi_i = self._phi[self._last_i, :]
-        # Construct arguments for sample_phi() for each pixel
+        B_i = self._B_chain[self._last_i, :]
+        # FIXME Always use zeroth walker from phi chain
+        # or should I choose random walker. Note sure how to
+        # 'align' the chains so a theta walker matches a phi walker
+        phi_i = self._phi_chain[0, self._last_i, :]
+        # Construct arguments for sample_theta() for each pixel
         args = []
         for i in xrange(self._n_pix):
             obs_sed = self._obs_seds[i, :]
             obs_err = self._obs_errs[i, :]
             priors = self._theta_priors[i]
-            p0 = self._theta_chain[self._last_i:, i]  # prev set of walkers
+            p0 = self._theta_chain[:, self._last_i, :, i]  # prev pos for pixel
+            print "pixel sample p0.shape", p0.shape
             arg = (obs_sed, obs_err, priors, B_i, phi_i, p0,
                    self._n_walkers, n_steps)
             args.append(arg)
         if not parallel:
-            results = map(sample_phi, args)
+            results = map(sample_theta, args)
         else:
-            results = self._pool.map(sample_phi, args)
-        # Append results to the flatchains
+            results = self._pool.map(sample_theta, args)
+        # Append results to the chain
         for i, result in enumerate(results):
             chain, blobs = result
             j = self._last_i + 1
-            k = j + n_steps * self._n_pixel_walkers
-            self._theta_chain[j:k, :, i] = chain
+            k = j + n_steps
+            self._theta_chain[:, j:k, :, i] = chain
             # persist the blobs using the posterior function
             # i.e. there is a separate blob chain for each pixel
             PIXEL_LNPOST.append_blobs(j, self._blobs[i], blobs)
         # repeat B and phi in their respective chains
-        self._phi_chain[j:k, :] = self._phi_chain[j - 1, :]
+        self._phi_chain[:, j:k, :] = self._phi_chain[:, j - 1, :]
         self._B_chain[j:k, :] = self._B_chain[j - 1, :]
 
-        self._last_i += n_steps * self._n_pixel_walkers
+        self._last_i += n_steps
 
     def _sample_global_posterior(self, n_steps):
         """Sample from parameters at the global level in a single MCMC run."""
         # Get previous state of chain
-        thetas_i = self._theta_chain[self._last_i, :, :]
-        B_i = self._B[self._last_i, :]
+        # FIXME Choose zeroth walker from theta chain
+        thetas_i = self._theta_chain[0, self._last_i, :, :]
+        B_i = self._B_chain[self._last_i, :]
         p0 = self._phi[self._last_i, :]
 
         # Run sampler
@@ -248,14 +255,14 @@ class MultiPixelGibbsBgModeller(object):
             self._n_global_walkers, GLOBAL_LNPOST.ndim, GLOBAL_LNPOST,
             args=(thetas_i, B_i))
         sampler.run_mcmc(p0, n_steps)
-        flatchain = sampler.flatchain
+        chain = sampler.chain
 
         # Insert posterior samples into chain
         j = self._last_i + 1
-        k = j + n_steps * self._n_global_walkers
-        self._phi_chain[j:k, :] = flatchain
+        k = j + n_steps
+        self._phi_chain[:, j:k, :] = chain
         # repeat B and theta in their respective chains
-        self._theta_chain[j:k, :, :] = self._theta_chain[j - 1, :, :]
+        self._theta_chain[:, j:k, :, :] = self._theta_chain[:, j - 1, :, :]
         self._B_chain[j:k, :] = self._B_chain[j - 1, :]
         # Replicate blob data too (needed for background estimate)
         self._replicate_blob_chain(j - 1, range(j, k))
@@ -284,15 +291,16 @@ class MultiPixelGibbsBgModeller(object):
         Hence we can produce the next sample of $B$ by simply drawing from
         this normal distribution.
         """
-        B_est = np.nan * np.empty((self._n_pix, PIXEL_LNPOST.nbands),
-                                  dtype=np.float)
+        B_est = np.empty((self._n_pix, PIXEL_LNPOST.nbands),
+                         dtype=np.float)
+        B_est.fill(np.nan)
         for i in self._n_pix:
             # Compute background estimate
             # the lnpost needs to compute this because it knows
             # - where in the blob the model_sed is stored
             # - how to map modelel_sed to obs_sed bandpasses
             B_est[i, :] = PIXEL_LNPOST.estimate_backgrounds(
-                self._obs_seds[i, :], self._blobs[i])
+                self._obs_seds[i, :], self._blobs[i][self._i_last])
 
         # Estimate Normal Distribution to sample from
         # (vectors of length n_bands)
@@ -307,8 +315,8 @@ class MultiPixelGibbsBgModeller(object):
         self._B_chain[j, :] = B_proposed
 
         # Repeat theta and phi values in the chain
-        self._phi_chain[j, :] = self._phi_chain[j - 1, :]
-        self._theta_chain[j, :, :] = self._theta_chain[j - 1, :, :]
+        self._phi_chain[: j, :] = self._phi_chain[:, j - 1, :]
+        self._theta_chain[:, j, :, :] = self._theta_chain[:, j - 1, :, :]
         # Replicate blob data too
         self._replicate_blob_chain(j - 1, [j])
 
@@ -333,7 +341,7 @@ def init_pixel_lnpost(lnpost_cls, fsps_params, obs_bands,
                               fsps_compute_bands=fsps_compute_bands)
 
 
-def sample_phi(args):
+def sample_theta(args):
     """Run an emcee sampler in the theta (per pixel) space.
 
     This sampler is extracted into separate function so that it may be called
@@ -360,10 +368,10 @@ def sample_phi(args):
 
     Returns
     -------
-    flatchain : ndarray
-        The flattened chain.
+    chain : ndarray
+        The posterior chain, ``(n_walkers, n_steps, ndim)``.
     blobs : ndarray
-        Metadata associated with the flatchain. This is a list of length
+        Metadata associated with the chain. This is a list of length
         ``n_steps``, where each item is of length ``n_walkers``.
     """
     global PIXEL_LNPOST
@@ -372,6 +380,6 @@ def sample_phi(args):
     sampler = emcee.EnsembleSampler(
         n_walkers, PIXEL_LNPOST.ndim, PIXEL_LNPOST, args=(B, phi))
     sampler.run_mcmc(p0, n_steps)
-    flatchain = sampler.flatchain
+    chain = sampler.chain
     blobs = sampler.blobs
-    return flatchain, blobs
+    return chain, blobs
