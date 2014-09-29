@@ -14,8 +14,8 @@ from sedbot.photconv import sb_to_mass, ab_mag_to_mjy, mjy_to_ab_sb
 
 from sedbot.probf import LnUniform, LnNormal
 
-from sedbot.multipix.gibbsbg import MultiPixelGibbsBgModeller
-from sedbot.multipix.threeparam_lnprob import ThreeParamLnProb, \
+from sedbot.ensemble_multipix.gibbsbg import MultiPixelGibbsBgModeller
+from sedbot.ensemble_multipix.threeparam_lnprob import ThreeParamLnProb, \
     GlobalThreeParamLnProb
 
 N_PIXELS = 5
