@@ -34,6 +34,10 @@ class MultiPixelBaseModel(object):
         self._theta_params = None
         self._phi_params = None
 
+        # Band names in the SED
+        self._sed_bands = []
+        self._compute_bands = []
+
         # Prior function dictionaries
         self._theta_priors = []  # list for each pixel
         self._phi_priors = {}  # dict keyed by prior key
@@ -43,6 +47,11 @@ class MultiPixelBaseModel(object):
 
         # Map processing function
         self._M = map  # or an ipython cluster
+
+    @property
+    def band_indices(self):
+        return np.array([self._compute_bands.index(b)
+                         for b in self._sed_bands])
 
     def sample_pixel(self, theta_i, phi, ipix):
         """Compute the ln-prob of a proposed step in local parameter
@@ -91,8 +100,6 @@ class MultiPixelBaseModel(object):
             ``(nparams, npix)`` shape.
         phi : ndarray
             Global parameters
-        ipix : int
-            Specify the pixel index
 
         Returns
         -------
@@ -117,7 +124,9 @@ class MultiPixelBaseModel(object):
                          phi,
                          self._phi_params,
                          self._seds[ipix, :],
-                         self._errs[ipix, :]))
+                         self._errs[ipix, :],
+                         self._sed_bands,
+                         self._compute_bands))
         results = self._M(self._lnlike_fcn, args)
 
         lnprob = 0.
@@ -130,7 +139,7 @@ class MultiPixelBaseModel(object):
             blobs.append(blobs)
         return lnprob, pixel_lnprobs, blobs
 
-    def update_background(self, theta, phi):
+    def update_background(self, theta, phi, model_seds):
         """Recompute the scalar background from a Normal distribution
         of model observation residuals.
 
@@ -143,13 +152,33 @@ class MultiPixelBaseModel(object):
             An `(n_pixels,)` structured array with pixel-level parameters
         phi : ndarray
             A `(1,)` structured array with the global-level parameters.
+        model_seds : ndarray
+            A ``(nbands, npix)`` array of model SEDs from the blob data
+            of the previous step. This lets us skip the task of recomputing
+            SEDs before estimating a new background.
 
         Returns
         -------
         B : ndarray
             New background vector, shape ``(n_bands,)``.
+        pixel_lnprobs : list
+            Ln probability for individual pixels
+        blobs : list
+            Blobs for individual pixels
         """
-        pass
+        # Reduce the model SEDs to just the observed bands
+        model = model_seds[self.band_indices, :]
+        all_residuals = self._seds - model
+        residuals = all_residuals.mean(axis=0)  # FIXME?
+
+        # Sample new values of B (for each bandpass) from a normal dist.
+        # TODO
+
+        # reset B for any images with fixed background
+        # TODO
+
+        # recompute the ln probability
+        return self.sample_global(theta, phi)
 
 
 def interp_z_likelihood(args):
