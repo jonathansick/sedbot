@@ -124,7 +124,12 @@ class MultiPixelGibbsBgSampler(object):
         # Initialize chains for individiual pixels
         for ipix in xrange(self._model.n_pix):
             lnprob, blob_dict = self._model.sample_pixel(theta0[ipix, :],
-                                                         phi0, ipix)
+                                                         phi0,
+                                                         B0,
+                                                         ipix)
+            self.pix_lnpost[0, ipix] = lnprob
+            for k, v in blob_dict.iteritems():
+                self.blobs[0][k][ipix] = v
 
         return 1
 

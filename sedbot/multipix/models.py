@@ -276,13 +276,12 @@ def interp_z_likelihood(args):
         np.power((model_mjy[band_indices] + B - sed) / err, 2.))
 
     # Scale statistics by the total mass
-    log_m_star = logm + np.log10(meta[0])  # log solar masses
-    log_m_dust = logm + np.log10(meta[1])  # log solar masses
-    log_lbol = logm * meta[2]  # log solar luminosities
-    log_sfr = logm * meta[3]  # star formation rate, M_sun / yr
-    log_age = meta[4]  # log(age / yr)
-    blob = (log_m_star, log_m_dust, log_lbol, log_sfr, log_age,
-            model_mjy)
+    blob = {"logMstar": logm + np.log10(meta[0]),  # log solar masses,
+            "logMdust": logm + np.log10(meta[1]),  # log solar masses
+            "logLbol": logm * meta[2],  # log solar luminosities
+            "logSFR": logm * meta[3],  # star formation rate, M_sun / yr
+            "logAge": meta[4],
+            "model_sed": model_mjy}  # note: background no included
 
     return L, blob
 
