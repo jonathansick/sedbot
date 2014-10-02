@@ -35,7 +35,7 @@ class MultiPixelBaseModel(object):
         self._phi_params = None
 
         # Band names in the SED
-        self._sed_bands = []
+        self._obs_bands = []
         self._compute_bands = []
 
         # Prior function dictionaries
@@ -51,7 +51,7 @@ class MultiPixelBaseModel(object):
     @property
     def band_indices(self):
         return np.array([self._compute_bands.index(b)
-                         for b in self._sed_bands])
+                         for b in self._obs_bands])
 
     @property
     def n_pix(self):
@@ -115,7 +115,9 @@ class MultiPixelBaseModel(object):
                                       self._phi_params,
                                       B,
                                       self._seds[ipix, :],
-                                      self._errs[ipix, :]))
+                                      self._errs[ipix, :],
+                                      self._obs_bands,
+                                      self._compute_bands))
         lnp = lnprior + lnL
         if not np.isfinite(lnp):
             return -np.inf, np.nan
@@ -160,7 +162,7 @@ class MultiPixelBaseModel(object):
                          self._phi_params,
                          self._seds[ipix, :],
                          self._errs[ipix, :],
-                         self._sed_bands,
+                         self._obs_bands,
                          self._compute_bands))
         results = self._M(self._lnlike_fcn, args)
 
@@ -324,9 +326,12 @@ class ThreeParamSFH(MultiPixelBaseModel):
                  compute_bands=None):
         super(ThreeParamSFH, self).__init__()
         self._seds = seds
-        self._sed_errs = sed_errs
-        self._sed_bands = sed_bands
-        self._compute_bands = compute_bands
+        self._errs = sed_errs
+        self._obs_bands = sed_bands
+        if compute_bands is None:
+            self._compute_bands = self._obs_bands
+        else:
+            self._compute_bands = compute_bands
         self._theta_priors = theta_priors
         self._phi_priors = phi_priors
 
