@@ -104,7 +104,8 @@ class MultiPixelBaseModel(object):
         blob : ndarray
             Structured array with metadata for this pixel sample.
         """
-        lnprior = self._ln_prior(theta_i, phi, ipix)
+        lnprior = self._pixel_ln_prior(theta_i, ipix)
+        lnprior += self._global_ln_prior(phi)
         if not np.isfinite(lnprior):
             return -np.inf, np.nan
 
@@ -146,7 +147,7 @@ class MultiPixelBaseModel(object):
         """
         lnpriors = []
         for ipix in xrange(self._npix):
-            lnprior = self._ln_prior(theta[:, ipix], phi, ipix)
+            lnprior = self._pixel_ln_prior(theta[:, ipix], phi, ipix)
             if not np.isfinite(lnprior):
                 return -np.inf
             lnpriors.append(lnprior)
@@ -163,7 +164,7 @@ class MultiPixelBaseModel(object):
                          self._compute_bands))
         results = self._M(self._lnlike_fcn, args)
 
-        lnprob = 0.
+        lnprob = self._global_ln_prior(phi)
         pixel_lnprobs = []
         blobs = []
         for lnprior, result in zip(lnpriors, results):
@@ -172,6 +173,23 @@ class MultiPixelBaseModel(object):
             pixel_lnprobs.append(lnprob)
             blobs.append(blobs)
         return lnprob, pixel_lnprobs, blobs
+
+    def _pixel_ln_prior(self, theta, ipix):
+        """Compute prior probabilities for a pixel sample
+
+        Excludes global priors.
+        """
+        lnp = 0
+        for i, name in enumerate(self._theta_params):
+            lnp += self._theta_priors[ipix][name](theta[i])
+        return lnp
+
+    def _global_ln_prior(self, phi):
+        """Compute prior probabilities of global parameters."""
+        lnp = 0
+        for i, name in enumerate(self._phi_params):
+            lnp += self._phi_priors[name](phi[i])
+        return lnp
 
     def update_background(self, theta, phi, model_seds):
         """Recompute the scalar background from a Normal distribution

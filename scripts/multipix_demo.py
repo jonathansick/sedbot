@@ -40,6 +40,7 @@ def main():
             p = {"logtau": LnUniform(*limits['logtau']),
                  "dust2": LnUniform(*limits['dust2']),
                  "dust1": LnUniform(*limits['dust2']),
+                 "const": LnUniform(*limits['const']),
                  "sf_start": LnUniform(*limits['sf_start']),
                  "logZZsol": LnUniform(*limits['logZZsol']),
                  "logmass": LnUniform(*limits['logmass'])}
