@@ -129,6 +129,10 @@ class MultiPixelGibbsBgSampler(object):
             for k, v in blobs.iteritems():
                 self.blobs[0][k][ipix] = v
 
+        print "lnpost", self.lnpost
+        print "pix_lnpost", self.pix_lnpost
+        print "blobs", self.blobs
+
         return 1
 
 

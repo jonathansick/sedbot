@@ -100,7 +100,7 @@ def make_dataset(npix, bands):
         pix_sed, pix_sigma = mock_dataset(sp,
                                           bands,
                                           785 * 1000.,
-                                          1e8,
+                                          1e9,
                                           0.0,
                                           0.05,
                                           apply_errors=True)
