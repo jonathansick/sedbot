@@ -50,9 +50,16 @@ def main():
                           phi_priors=phi_priors)
         return m
 
+    theta0 = [9., 0.0, 3., 1., 0.1, 0.3, 0.2]
+    theta0 = np.array([theta0, theta0])
+    phi0 = np.array([785. * 1000.])
+    B0 = np.array([0.] * len(sed_bands))
+
     sampler = MultiPixelGibbsBgSampler(model_initializer)
-    print sampler
-    print sampler._model
+    sampler.sample(5,
+                   theta0=theta0,
+                   phi0=phi0,
+                   B0=B0)
 
 
 def make_dataset(npix, bands):
@@ -62,6 +69,8 @@ def make_dataset(npix, bands):
                  'dust_type': 0,  # Power law dust
                  'sf_start': 3.,
                  'sfh': 1,
+                 'tau': 10.,
+                 'const': 0.1,
                  'tburst': 10.,
                  'fburst': 0.,
                  'dust1': 0.2,

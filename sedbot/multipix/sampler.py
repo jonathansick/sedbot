@@ -36,7 +36,7 @@ class MultiPixelGibbsBgSampler(object):
         """Initialize an ipython.parallel pool for processing pixels."""
         # Put the model in the global namespace for parallel processing
         global MODEL
-        MODEL = self._model_initialier()
+        MODEL = self._model_initializer()
 
         # Setup up the pool
         if self._n_cpu == 1:
@@ -81,6 +81,7 @@ class MultiPixelGibbsBgSampler(object):
                 theta_prop = None
                 args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
             results = self._M(pixel_mh_sampler, args)
+            print results
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
         """Initialize memory
@@ -90,36 +91,33 @@ class MultiPixelGibbsBgSampler(object):
         # Make parameter chains
         self.theta = np.empty((n_iter,
                                self._model.n_pix,
-                               self._model._n_theta),
+                               self._model.n_theta),
                               dtype=np.float)
         self.theta.fill(np.nan)
         self.theta[0, :, :] = theta0
 
         self.phi = np.empty((n_iter,
-                             self._model._n_phi),
+                             self._model.n_phi),
                             dtype=np.float)
         self.phi.fill(np.nan)
         self.phi[0, :] = phi0
 
         self.B = np.empty((n_iter,
-                           self._model._n_bands),
+                           self._model.n_bands),
                           dtype=np.float)
         self.B.fill(np.nan)
         self.B[0, :] = B0
 
         self.lnpost = np.empty(n_iter, dtype=np.float)
         self.lnpost.fill(np.nan)
-        # FIXME compute inital global posterior
 
         self.pix_lnpost = np.empty((n_iter, self._model.n_pix),
                                    dtype=np.float)
         self.pix_lnpost.fill(np.nan)
-        # FIXME compute initial pixel lnposts
 
         # Make a structured array for the complex blob data
         self.blobs = np.empty(n_iter, dtype=self._model.blob_dtype)
         self.blobs.fill(np.nan)
-        # FIXME compute initial blob data
 
         # Initialize chains for individiual pixels
         for ipix in xrange(self._model.n_pix):
@@ -130,6 +128,9 @@ class MultiPixelGibbsBgSampler(object):
             self.pix_lnpost[0, ipix] = lnprob
             for k, v in blob_dict.iteritems():
                 self.blobs[0][k][ipix] = v
+
+        # Initialize the global likelihood
+        self.lnpost[0] = self._model.sample_global(theta0, phi0, B0)
 
         return 1
 
