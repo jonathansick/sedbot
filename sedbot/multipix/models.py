@@ -170,6 +170,7 @@ class MultiPixelBaseModel(object):
         model = model_seds[self.band_indices, :]
         all_residuals = self._seds - model
         residuals = all_residuals.mean(axis=0)  # FIXME?
+        print residuals
 
         # Sample new values of B (for each bandpass) from a normal dist.
         # TODO
@@ -255,7 +256,19 @@ def interp_z_likelihood(args):
 
 
 class ThreeParamSFH(MultiPixelBaseModel):
-    """Model based on a three-parameter star formation history."""
+    """Model based on a three-parameter star formation history.
+
+    Parameters
+    ----------
+    seds : ndarray
+        SEDs in µJy, shape ``(npix, nbands)``.
+    seds : ndarray
+        SEDs uncertainties in µJy, shape ``(npix, nbands)``.
+    bands : list
+        List of bandpass names corresponding to the ``seds``
+    compute_bands : list
+        List of bandpasses to compute and included in the chain metadata.
+    """
     def __init__(self, seds, sed_errs, sed_bands,
                  theta_priors=None,
                  phi_priors=None,
@@ -267,3 +280,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
         self._compute_bands = compute_bands
         self._theta_priors = theta_priors
         self._phi_priors = phi_priors
+
+        self._theta_params = ['logmass', 'logZZsol',
+                              'sf_start', 'logtau', 'const',
+                              'dust1', 'dust2']

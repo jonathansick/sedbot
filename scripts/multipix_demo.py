@@ -7,10 +7,11 @@ Demonstration for the multipix package.
 import numpy as np
 from fsps import StellarPopulation
 
+from sedbot.probf import LnUniform, LnNormal
+from sedbot.modeltools import mock_dataset
+
 from sedbot.multipix.models import ThreeParamSFH
 from sedbot.multipix.sampler import MultiPixelGibbsBgSampler
-
-from sedbot.modeltools import mock_dataset
 
 
 def main():
@@ -19,8 +20,34 @@ def main():
     seds, sed_errs = make_dataset(npix, sed_bands)
     print seds
 
+    d0 = 785. * 1000
+    d0_sigma = 25. * 1000.
+    limits = {'logmass': (7., 9.),
+              'logtau': (-1., 2.),
+              'const': (0., 1.0),
+              'sf_start': (0.5, 10.),
+              'tburst': (10.0, 13.8),
+              'fburst': (0., 1.0),
+              'logZZsol': (-1.98, 0.2),
+              'd': (d0 - 3. * d0_sigma, d0 + 3. * d0_sigma),
+              'dust1': (0., 5.),
+              'dust2': (0., 3.),
+              'ml': (-0.5, 1.5)}
+
     def model_initializer():
-        m = ThreeParamSFH(seds, sed_errs, sed_bands)
+        theta_priors = []
+        for i in xrange(npix):
+            p = {"logtau": LnUniform(*limits['logtau']),
+                 "dust2": LnUniform(*limits['dust2']),
+                 "dust1": LnUniform(*limits['dust2']),
+                 "sf_start": LnUniform(*limits['sf_start']),
+                 "logZZsol": LnUniform(*limits['logZZsol']),
+                 "logmass": LnUniform(*limits['logmass'])}
+            theta_priors.append(p)
+        phi_priors = {"d": LnNormal(d0, d0_sigma, limits=limits['d'])}
+        m = ThreeParamSFH(seds, sed_errs, sed_bands,
+                          theta_priors=theta_priors,
+                          phi_priors=phi_priors)
         return m
 
     sampler = MultiPixelGibbsBgSampler(model_initializer)
