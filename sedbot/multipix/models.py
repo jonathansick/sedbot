@@ -8,7 +8,7 @@ import itertools
 
 import numpy as np
 
-# import fsps
+import fsps
 
 from sedbot.photconv import abs_ab_mag_to_mjy
 from sedbot.zinterp import bracket_logz, interp_logz
@@ -18,8 +18,15 @@ SP = None
 
 
 class MultiPixelBaseModel(object):
-    """Baseclass for multipixel models."""
-    def __init__(self):
+    """Baseclass for multipixel models.
+
+    Parameters
+    ----------
+    pset : dict
+        Initialization arguments to :class:`fsps.StellarPopulation`, as a
+        dictionary.
+    """
+    def __init__(self, pset=None):
         super(MultiPixelBaseModel, self).__init__()
         # Containers for SEDs of all pixels
         self._seds = None
@@ -47,6 +54,12 @@ class MultiPixelBaseModel(object):
 
         # Map processing function
         self._M = map  # or an ipython cluster
+
+        # Set up the module-level stellar population engine
+        global SP
+        if pset is None:
+            pset = {}
+        SP = fsps.StellarPopulation(**pset)
 
     @property
     def band_indices(self):
@@ -319,12 +332,16 @@ class ThreeParamSFH(MultiPixelBaseModel):
         List of bandpass names corresponding to the ``seds``
     compute_bands : list
         List of bandpasses to compute and included in the chain metadata.
+    pset : dict
+        Initialization arguments to :class:`fsps.StellarPopulation`, as a
+        dictionary.
     """
     def __init__(self, seds, sed_errs, sed_bands,
                  theta_priors=None,
                  phi_priors=None,
-                 compute_bands=None):
-        super(ThreeParamSFH, self).__init__()
+                 compute_bands=None,
+                 pset=None):
+        super(ThreeParamSFH, self).__init__(pset=pset)
         self._seds = seds
         self._errs = sed_errs
         self._obs_bands = sed_bands

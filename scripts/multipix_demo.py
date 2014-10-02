@@ -46,9 +46,23 @@ def main():
                  "logmass": LnUniform(*limits['logmass'])}
             theta_priors.append(p)
         phi_priors = {"d": LnNormal(d0, d0_sigma, limits=limits['d'])}
+        pset = {'add_dust_emission': True,
+                'add_stellar_remnants': True,
+                'compute_vega_mags': False,  # use AB mags
+                'dust_type': 0,  # Power law dust
+                'sf_start': 3.,
+                'sfh': 1,
+                'tau': 10.,
+                'const': 0.1,
+                'tburst': 10.,
+                'fburst': 0.,
+                'dust1': 0.2,
+                'dust2': 0.2,
+                'zmet': 20}
         m = ThreeParamSFH(seds, sed_errs, sed_bands,
                           theta_priors=theta_priors,
-                          phi_priors=phi_priors)
+                          phi_priors=phi_priors,
+                          pset=pset)
         return m
 
     theta0 = [9., 0.0, 3., 1., 0.1, 0.3, 0.2]
