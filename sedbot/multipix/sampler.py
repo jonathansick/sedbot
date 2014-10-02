@@ -12,34 +12,31 @@ class MultiPixelGibbsBgSampler(object):
 
     Parameters
     ----------
-    seds : ndarray
-        SEDs in µJy, shape ``(npix, nbands)``.
-    seds : ndarray
-        SEDs uncertainties in µJy, shape ``(npix, nbands)``.
-    bands : list
-        List of bandpass names corresponding to the ``seds``
-    compute_bands : list
-        List of bandpasses to compute and included in the chain metadata.
     model_initializer : function
         Function that, when called, creates a model instance.
         This is done to enable multi-processing.
     n_cpu : int
         Number of CPUs to run on.
     """
-    def __init__(self, seds, sed_errs, bands,
-                 model_initializer,
-                 compute_bands=None,
+    def __init__(self, model_initializer,
                  n_cpu=1):
         super(MultiPixelGibbsBgSampler, self).__init__()
-        self._seds = seds
-        self._errs = sed_errs
-        self._sed_bands = bands
-        if compute_bands is not None:
-            self._compute_bands = compute_bands
-        else:
-            self._compute_bands = self._sed_bands
         self._n_cpu = n_cpu
         self._model_initializer = model_initializer
+
+        # Set up a local model instance
+        self._model = self._model_initializer()
+
+        # Set up a pixel compute pool
+        self._m = self._init_pixel_compute_pool()
+
+    def _init_pixel_compute_pool(self):
+        """Initialize an ipython.parallel pool for processing pixels."""
+        if self._n_cpu == 1:
+            map_fcn = map  # single processing
+        else:
+            map_fcn = None  # TODO
+        return map_fcn
 
     def sample(self, n_iter,
                theta_prop=None,

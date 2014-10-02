@@ -252,3 +252,18 @@ def interp_z_likelihood(args):
             model_mjy)
 
     return L, blob
+
+
+class ThreeParamSFH(MultiPixelBaseModel):
+    """Model based on a three-parameter star formation history."""
+    def __init__(self, seds, sed_errs, sed_bands,
+                 theta_priors=None,
+                 phi_priors=None,
+                 compute_bands=None):
+        super(ThreeParamSFH, self).__init__()
+        self._seds = seds
+        self._sed_errs = sed_errs
+        self._sed_bands = sed_bands
+        self._compute_bands = compute_bands
+        self._theta_priors = theta_priors
+        self._phi_priors = phi_priors
