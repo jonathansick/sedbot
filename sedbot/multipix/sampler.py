@@ -74,11 +74,12 @@ class MultiPixelGibbsBgSampler(object):
             # Sample for all pixels
             args = []
             for ipix in xrange(self._model.n_pix):
-                post0 = self.lnpost[i0 - 1]
-                theta0 = self.theta[i0 - 1, ipix, :]
-                phi0 = self.phi[i0 - 1, :]
+                _post0 = self.lnpost[i0 - 1]
+                _theta0 = self.theta[i0 - 1, ipix, :]
+                _phi0 = self.phi[i0 - 1, :]
+                _B0 = self.B[i0 - 1, :]
                 theta_prop = None
-                args.append((ipix, post0, theta0, phi0, theta_prop))
+                args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
             results = self._M(pixel_mh_sampler, args)
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
@@ -120,6 +121,11 @@ class MultiPixelGibbsBgSampler(object):
         self.blobs.fill(np.nan)
         # FIXME compute initial blob data
 
+        # Initialize chains for individiual pixels
+        for ipix in xrange(self._model.n_pix):
+            lnprob, blob_dict = self._model.sample_pixel(theta0[ipix, :],
+                                                         phi0, ipix)
+
         return 1
 
 
@@ -140,6 +146,8 @@ def pixel_mh_sampler(args):
         Initial values of theta parameters.
     phi0 : ndarray
         Initial values of the phi parameters.
+    B0 : ndarray
+        Initial values of the B, background, parameters.
     theta_prop : ndarray
         Array of Gaussian proposal standard deviations.
 
@@ -154,7 +162,7 @@ def pixel_mh_sampler(args):
         parameters.
     """
     global MODEL
-    pix, post0, theta0, phi0, theta_prop = args
+    pix, post0, theta0, phi0, B0, theta_prop = args
     theta = np.copy(theta0)
     for i in xrange(theta0.shape[0]):
         # MH on each parameter

@@ -82,7 +82,7 @@ class MultiPixelBaseModel(object):
               ('model_sed', self._n_pix, self._n_bands)]
         return np.dtype(dt)
 
-    def sample_pixel(self, theta_i, phi, ipix):
+    def sample_pixel(self, theta_i, phi, B, ipix):
         """Compute the ln-prob of a proposed step in local parameter
         space (theta) for a single pixel, ``ipix``.
 
@@ -92,6 +92,8 @@ class MultiPixelBaseModel(object):
             Parameters in theta space for this pixel
         phi : ndarray
             Global parameters
+        B : ndarray
+            Background, ``(nbands,)``.
         ipix : int
             Specify the pixel index
 
@@ -110,6 +112,7 @@ class MultiPixelBaseModel(object):
                                       self._theta_params,
                                       phi,
                                       self._phi_params,
+                                      B,
                                       self._seds[ipix, :],
                                       self._errs[ipix, :]))
         lnp = lnprior + lnL
@@ -118,7 +121,7 @@ class MultiPixelBaseModel(object):
         else:
             return lnL, blob
 
-    def sample_global(self, theta, phi):
+    def sample_global(self, theta, phi, B):
         """Compute the ln-prob of a proposed step in global parameter
         space (phi).
 
@@ -129,6 +132,8 @@ class MultiPixelBaseModel(object):
             ``(nparams, npix)`` shape.
         phi : ndarray
             Global parameters
+        B : ndarray
+            Background, ``(nbands,)``.
 
         Returns
         -------
@@ -217,7 +222,7 @@ def interp_z_likelihood(args):
     """
     global SP
 
-    theta, theta_names, phi, phi_names, sed, err, sed_bands, compute_bands \
+    theta, theta_names, phi, phi_names, B, sed, err, sed_bands, compute_bands \
         = args
 
     meta1 = np.empty(5, dtype=float)
@@ -235,8 +240,6 @@ def interp_z_likelihood(args):
             logZZsol = val
         elif name == 'logtau':
             SP.params['tau'] = 10. ** val
-        elif name == 'B':
-            B = np.array(val)
         elif name in SP.params.all_params:  # list of parameter names
             SP.params[name] = val
 
