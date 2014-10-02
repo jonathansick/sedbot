@@ -70,18 +70,18 @@ class MultiPixelGibbsBgSampler(object):
 
         # initialize memory
         i0 = self._init_chains(n_iter, theta0, phi0, B0)
-        for i in xrange(i0, i0 + n_iter):
-            # Sample for all pixels
-            args = []
-            for ipix in xrange(self._model.n_pix):
-                _post0 = self.lnpost[i0 - 1]
-                _theta0 = self.theta[i0 - 1, ipix, :]
-                _phi0 = self.phi[i0 - 1, :]
-                _B0 = self.B[i0 - 1, :]
-                theta_prop = None
-                args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
-            results = self._M(pixel_mh_sampler, args)
-            print results
+        # for i in xrange(i0, i0 + n_iter):
+        #     # Sample for all pixels
+        #     args = []
+        #     for ipix in xrange(self._model.n_pix):
+        #         _post0 = self.lnpost[i0 - 1]
+        #         _theta0 = self.theta[i0 - 1, ipix, :]
+        #         _phi0 = self.phi[i0 - 1, :]
+        #         _B0 = self.B[i0 - 1, :]
+        #         theta_prop = None
+        #         args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
+        #     results = self._M(pixel_mh_sampler, args)
+        #     print results
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
         """Initialize memory
@@ -119,18 +119,15 @@ class MultiPixelGibbsBgSampler(object):
         self.blobs = np.empty(n_iter, dtype=self._model.blob_dtype)
         self.blobs.fill(np.nan)
 
-        # Initialize chains for individiual pixels
-        for ipix in xrange(self._model.n_pix):
-            lnprob, blob_dict = self._model.sample_pixel(theta0[ipix, :],
-                                                         phi0,
-                                                         B0,
-                                                         ipix)
-            self.pix_lnpost[0, ipix] = lnprob
-            for k, v in blob_dict.iteritems():
+        # Initialize the starting point of the chains
+        global_lnp, pixel_lnp, pixel_blobs \
+            = self._model.sample_global(theta0, phi0, B0)
+        self.lnpost[0] = global_lnp
+        for ipix, lnp in enumerate(pixel_lnp):
+            self.pix_lnpost[0, ipix] = lnp
+        for ipix, blobs in enumerate(pixel_blobs):
+            for k, v in blobs.iteritems():
                 self.blobs[0][k][ipix] = v
-
-        # Initialize the global likelihood
-        self.lnpost[0] = self._model.sample_global(theta0, phi0, B0)
 
         return 1
 

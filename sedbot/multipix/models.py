@@ -117,6 +117,7 @@ class MultiPixelBaseModel(object):
         blob : ndarray
             Structured array with metadata for this pixel sample.
         """
+        print "theta_i", theta_i
         lnprior = self._pixel_ln_prior(theta_i, ipix)
         lnprior += self._global_ln_prior(phi)
         if not np.isfinite(lnprior):
@@ -161,18 +162,19 @@ class MultiPixelBaseModel(object):
             Blobs for individual pixels
         """
         lnpriors = []
-        for ipix in xrange(self._npix):
-            lnprior = self._pixel_ln_prior(theta[:, ipix], phi, ipix)
+        for ipix in xrange(self.n_pix):
+            lnprior = self._pixel_ln_prior(theta[ipix, :], ipix)
             if not np.isfinite(lnprior):
                 return -np.inf
             lnpriors.append(lnprior)
 
         args = []
-        for ipix in xrange(self._npix):
-            args.append((theta[:, ipix],
+        for ipix in xrange(self.n_pix):
+            args.append((theta[ipix, :],
                          self._theta_params,
                          phi,
                          self._phi_params,
+                         B,
                          self._seds[ipix, :],
                          self._errs[ipix, :],
                          self._obs_bands,
@@ -186,7 +188,7 @@ class MultiPixelBaseModel(object):
             lnL, blob = result
             lnprob += lnL + lnprior
             pixel_lnprobs.append(lnprob)
-            blobs.append(blobs)
+            blobs.append(blob)
         return lnprob, pixel_lnprobs, blobs
 
     def _pixel_ln_prior(self, theta, ipix):
@@ -195,7 +197,9 @@ class MultiPixelBaseModel(object):
         Excludes global priors.
         """
         lnp = 0
+        print "theta", theta
         for i, name in enumerate(self._theta_params):
+            print i, name
             lnp += self._theta_priors[ipix][name](theta[i])
         return lnp
 
@@ -265,8 +269,9 @@ def interp_z_likelihood(args):
 
     # Evaluate the ln-likelihood function by interpolating between
     # metallicty bracket
-    for name, val in itertools.chain(zip(theta, theta_names),
-                                     zip(phi, phi_names)):
+    for name, val in itertools.chain(zip(theta_names, theta),
+                                     zip(phi_names, phi)):
+        print name, val
         if name == 'logmass':
             logm = val
         elif name == 'logZZsol':
