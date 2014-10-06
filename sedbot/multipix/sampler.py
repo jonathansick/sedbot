@@ -72,17 +72,33 @@ class MultiPixelGibbsBgSampler(object):
 
         # initialize memory
         i0 = self._init_chains(n_iter, theta0, phi0, B0)
+
         for i in xrange(i0, i0 + n_iter):
             # Sample for all pixels
             args = []
             for ipix in xrange(self._model.n_pix):
-                _post0 = self.lnpost[i0 - 1]
-                _theta0 = self.theta[i0 - 1, ipix, :]
-                _phi0 = self.phi[i0 - 1, :]
-                _B0 = self.B[i0 - 1, :]
+                _post0 = self.pix_lnpost[i - 1, ipix]
+                _theta0 = self.theta[i - 1, ipix, :]
+                _phi0 = self.phi[i - 1, :]
+                _B0 = self.B[i - 1, :]
                 args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
             results = self._map(pixel_mh_sampler, args)
-            print results
+            for ipix, result in enumerate(results):
+                lnpost, theta, blob = result
+                self.pix_lnpost[i, ipix] = lnpost
+                self.theta[i, ipix, :] = theta
+                for k, v in blob.iteritems():
+                    self.blobs[i][k][ipix] = v
+
+            # TODO Update the background
+            pass
+
+            # TODO Update the global posterior probability with these pixel
+            # values and new background
+            pass
+
+            # TODO Sample the global parameters
+            pass
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
         """Initialize memory
