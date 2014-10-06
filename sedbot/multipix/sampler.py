@@ -236,14 +236,13 @@ class MultiPixelGibbsBgSampler(object):
     def print_faccept(self):
         """Printed report of the acceptance fraction statistics"""
         faccept = self.median_theta_faccept
-        # FIXME Model should have public accessort to param names
-        d = OrderedDict(zip(self._model._theta_params, faccept))
+        d = OrderedDict(zip(self._model.theta_params, faccept))
         # pp = pprint.PrettyPrinter(indent=4)
         # pp.pprint(d)
         print("theta")
         print(json.dumps(d, indent=4))
         print("phi")
-        d = OrderedDict(zip(self._model._phi_params, self.phi_faccept))
+        d = OrderedDict(zip(self._model.phi_params, self.phi_faccept))
         print(json.dumps(d, indent=4))
 
 
