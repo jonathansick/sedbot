@@ -164,7 +164,7 @@ class MultiPixelBaseModel(object):
         for ipix in xrange(self.n_pix):
             lnprior = self._pixel_ln_prior(theta[ipix, :], ipix)
             if not np.isfinite(lnprior):
-                return -np.inf
+                return -np.inf, np.inf, None
             lnpriors.append(lnprior)
 
         args = []
@@ -197,7 +197,10 @@ class MultiPixelBaseModel(object):
         """
         lnp = 0
         for i, name in enumerate(self._theta_params):
-            lnp += self._theta_priors[ipix][name](theta[i])
+            p = self._theta_priors[ipix][name](theta[i])
+            # print ipix, name, theta[i], p
+            lnp += p
+            # lnp += self._theta_priors[ipix][name](theta[i])
         return lnp
 
     def _global_ln_prior(self, phi):

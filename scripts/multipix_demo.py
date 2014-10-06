@@ -66,17 +66,20 @@ def main():
         return m
 
     # Gaussian sigmas for step proposal distributions
-    theta_step = np.array([0.05, 0.05, 0.1, 0.05, 0.1, 0.1, 0.1])
+    theta_step = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
     phi_step = np.array([5.])
 
     # Initial values of the chains
-    theta0 = [9., 0.0, 3., 1., 0.1, 0.3, 0.2]
+    theta0 = [8., 0.0, 3., 1., 0.1, 0.3, 0.2]
+    # theta0 = np.array([theta0, theta0]) + np.random.randn(2, 7) * 0.01
     theta0 = np.array([theta0, theta0])
+    print "theta0", theta0
+    print theta0.shape
     phi0 = np.array([785. * 1000.])
     B0 = np.array([0.] * len(sed_bands))
 
     sampler = MultiPixelGibbsBgSampler(model_initializer)
-    sampler.sample(5,
+    sampler.sample(20,
                    theta0=theta0,
                    phi0=phi0,
                    B0=B0,
@@ -107,7 +110,7 @@ def make_dataset(npix, bands):
         pix_sed, pix_sigma = mock_dataset(sp,
                                           bands,
                                           785 * 1000.,
-                                          1e9,
+                                          1e8,
                                           0.0,
                                           0.05,
                                           apply_errors=True)

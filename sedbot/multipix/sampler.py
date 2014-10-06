@@ -85,7 +85,7 @@ class MultiPixelGibbsBgSampler(object):
                 args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
             results = self._map(pixel_mh_sampler, args)
             for ipix, result in enumerate(results):
-                lnpost, theta, blob = result
+                lnpost, theta, blob, theta_accept = result
                 self.pix_lnpost[i, ipix] = lnpost
                 self.theta[i, ipix, :] = theta
                 if blob is not None:
@@ -95,16 +95,18 @@ class MultiPixelGibbsBgSampler(object):
                         # repeat previous blob values
                         for k in self.blobs.dtype.fields:
                             self.blobs[i][k][ipix] = self.blobs[i - 1][k][ipix]
+                print theta_accept
+                self._theta_n_accept[ipix, :] += theta_accept
 
             # TODO Update the background
-            pass
+            self.B[i, :] = self.B[i - 1, :]
 
             # TODO Update the global posterior probability with these pixel
             # values and new background
             pass
 
             # TODO Sample the global parameters
-            pass
+            self.phi[i, :] = self.phi[i - 1, :]
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
         """Initialize memory
@@ -143,6 +145,9 @@ class MultiPixelGibbsBgSampler(object):
         self.blobs.fill(np.nan)
 
         # Initialize the starting point of the chains
+        print "theta0", theta0
+        print "phi0", phi0
+        print "B0", B0
         global_lnp, pixel_lnp, pixel_blobs \
             = self._model.sample_global(theta0, phi0, B0)
         self.lnpost[0] = global_lnp
@@ -151,6 +156,12 @@ class MultiPixelGibbsBgSampler(object):
         for ipix, blobs in enumerate(pixel_blobs):
             for k, v in blobs.iteritems():
                 self.blobs[0][k][ipix] = v
+
+        # Track acceptance of individual parameters for each pixel
+        self._theta_n_accept = np.zeros((self._model.n_pix,
+                                         self._model.n_theta),
+                                        dtype=np.int)
+        self._phi_n_accept = np.zeros(self._model.n_phi, dtype=np.int)
 
         return 1
 
@@ -186,31 +197,42 @@ def pixel_mh_sampler(args):
     blob : dict
         Stellar population metadata for this pixel given the updated `theta`
         parameters.
+    n_accept : ndarray
+        Array of length ``n_theta`` whose values are 1 for parameters
+        that were updated, and zeros for values that remain constant from
+        the previous iteration.
     """
     global MODEL
     ipix, post0, theta0, phi0, B0, theta_prop = args
+    # print "post0", post0
+    # print "theta0", theta0
+    # print "phi0", phi0
+    # print "B0", B0
     theta = np.copy(theta0)
     post = post0
     # MH on each parameter
     blob = None
+    n_accept = np.zeros(theta.shape[0], dtype=np.int)
     for i in xrange(theta0.shape[0]):
         # Gaussian proposal for parameter i, only
         theta_new = theta.copy()
         theta_new[i] += theta_prop[i] * np.random.randn()
         lnpost_new, blob_new = MODEL.sample_pixel(theta_new, phi0, B0, ipix)
-        r = lnpost_new / post
+        ln_r = lnpost_new - post
+        # print ipix, i, ln_r
         reject = True
-        if ~np.isfinite(r):
+        if ~np.isfinite(ln_r):
             pass
-        elif r > 1.:
+        elif ln_r >= 0.:
             reject = False
         else:
             x = np.random.rand(0., 1.)
-            if r > x:
+            if x < np.exp(ln_r):
                 reject = False
         if not reject:
             # adopt new point
             theta = theta_new
             blob = blob_new
             post = lnpost_new
-    return post, theta, blob
+            n_accept[i] = 1
+    return post, theta, blob, n_accept
