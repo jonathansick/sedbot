@@ -67,7 +67,7 @@ def main():
 
     # Gaussian sigmas for step proposal distributions
     theta_step = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]) / 8.
-    phi_step = np.array([5.])
+    phi_step = np.array([1.])
 
     # Initial values of the chains
     theta0 = [8., 0.0, 3., 1., 0.1, 0.3, 0.2]

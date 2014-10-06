@@ -197,10 +197,7 @@ class MultiPixelBaseModel(object):
         """
         lnp = 0
         for i, name in enumerate(self._theta_params):
-            p = self._theta_priors[ipix][name](theta[i])
-            # print ipix, name, theta[i], p
-            lnp += p
-            # lnp += self._theta_priors[ipix][name](theta[i])
+            lnp += self._theta_priors[ipix][name](theta[i])
         return lnp
 
     def _global_ln_prior(self, phi):

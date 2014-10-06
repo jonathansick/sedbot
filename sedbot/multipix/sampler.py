@@ -98,18 +98,73 @@ class MultiPixelGibbsBgSampler(object):
                         # repeat previous blob values
                         for k in self.blobs.dtype.fields:
                             self.blobs[i][k][ipix] = self.blobs[i - 1][k][ipix]
-                print theta_accept
                 self._theta_n_accept[ipix, :] += theta_accept
 
             # TODO Update the background
             self.B[i, :] = self.B[i - 1, :]
 
-            # TODO Update the global posterior probability with these pixel
+            # Update the global posterior probability with these pixel
             # values and new background
-            pass
+            global_lnp, pixel_lnp, pixel_blobs \
+                = self._model.sample_global(self.theta[i, :, :],
+                                            self.phi[i - 1, :],
+                                            self.B[i, :])
 
-            # TODO Sample the global parameters
-            self.phi[i, :] = self.phi[i - 1, :]
+            # Sample the global parameters
+            phi_new, global_lnp, pixel_lnps, pixel_blobs, n_accept \
+                = self._global_mh(i,
+                                  global_lnp,
+                                  self.phi[i - 1, :],
+                                  self.theta[i, :, :],
+                                  self.B[i, :],
+                                  phi_prop)
+            # fill in new values to chain.
+            self.phi[i, :] = phi_new
+            self.lnpost[i] = global_lnp
+            self._phi_n_accept += n_accept
+            # Update ln post and blob data for all pixels too
+            # it was done for the pixel-only step, but these values have
+            # changed given the new background, etc.
+            if pixel_lnps is not None:
+                for ipix, lnp in enumerate(pixel_lnps):
+                    self.pix_lnpost[i, ipix] = lnp
+            if pixel_blobs is not None:
+                for ipix, blobs in enumerate(pixel_blobs):
+                    for k, v in blobs.iteritems():
+                        self.blobs[i][k][ipix] = v
+
+    def _global_mh(self, i, lnpost0, phi, theta, B, phi_prop):
+        """Perform MH-in-Gibbs at the global level."""
+        phi = np.copy(phi)
+        lnpost = lnpost0
+        lnpost_pixel = None
+        blobs = None
+        n_accept = np.zeros(phi.shape[0], dtype=np.int)
+        for j in xrange(phi.shape[0]):
+            # Gaussian proposal for parameter j, only
+            phi_new = np.copy(phi)
+            phi_new[j] += phi_prop[j] * np.random.randn()
+            global_lnp, pixel_lnp, pixel_blobs \
+                = self._model.sample_global(theta,
+                                            phi_new,
+                                            B)
+            ln_r = global_lnp - lnpost0
+            reject = True
+            if ~np.isfinite(ln_r):
+                pass
+            elif ln_r >= 0.:
+                reject = False
+            else:
+                x = np.random.rand(0., 1.)
+                if x < np.exp(ln_r):
+                    reject = False
+            if not reject:
+                # adopt new point
+                lnpost = global_lnp
+                lnpost_pixel = pixel_lnp
+                blobs = pixel_blobs
+                n_accept[j] = 1
+        return phi, lnpost, lnpost_pixel, blobs, n_accept
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
         """Initialize memory
@@ -148,9 +203,6 @@ class MultiPixelGibbsBgSampler(object):
         self.blobs.fill(np.nan)
 
         # Initialize the starting point of the chains
-        print "theta0", theta0
-        print "phi0", phi0
-        print "B0", B0
         global_lnp, pixel_lnp, pixel_blobs \
             = self._model.sample_global(theta0, phi0, B0)
         self.lnpost[0] = global_lnp
@@ -233,10 +285,6 @@ def pixel_mh_sampler(args):
     """
     global MODEL
     ipix, post0, theta0, phi0, B0, theta_prop = args
-    # print "post0", post0
-    # print "theta0", theta0
-    # print "phi0", phi0
-    # print "B0", B0
     theta = np.copy(theta0)
     post = post0
     # MH on each parameter
@@ -248,7 +296,6 @@ def pixel_mh_sampler(args):
         theta_new[i] += theta_prop[i] * np.random.randn()
         lnpost_new, blob_new = MODEL.sample_pixel(theta_new, phi0, B0, ipix)
         ln_r = lnpost_new - post
-        # print ipix, i, ln_r
         reject = True
         if ~np.isfinite(ln_r):
             pass
