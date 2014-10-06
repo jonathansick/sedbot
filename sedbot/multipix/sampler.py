@@ -74,6 +74,7 @@ class MultiPixelGibbsBgSampler(object):
         i0 = self._init_chains(n_iter, theta0, phi0, B0)
 
         for i in xrange(i0, i0 + n_iter):
+            print "Iteration {0:d}".format(i)
             # Sample for all pixels
             args = []
             for ipix in xrange(self._model.n_pix):
@@ -87,8 +88,13 @@ class MultiPixelGibbsBgSampler(object):
                 lnpost, theta, blob = result
                 self.pix_lnpost[i, ipix] = lnpost
                 self.theta[i, ipix, :] = theta
-                for k, v in blob.iteritems():
-                    self.blobs[i][k][ipix] = v
+                if blob is not None:
+                    for k, v in blob.iteritems():
+                        self.blobs[i][k][ipix] = v
+                    else:
+                        # repeat previous blob values
+                        for k in self.blobs.dtype.fields:
+                            self.blobs[i][k][ipix] = self.blobs[i - 1][k][ipix]
 
             # TODO Update the background
             pass
@@ -106,34 +112,34 @@ class MultiPixelGibbsBgSampler(object):
         Note this could be adapted to extend existing chains.
         """
         # Make parameter chains
-        self.theta = np.empty((n_iter,
+        self.theta = np.empty((n_iter + 1,
                                self._model.n_pix,
                                self._model.n_theta),
                               dtype=np.float)
         self.theta.fill(np.nan)
         self.theta[0, :, :] = theta0
 
-        self.phi = np.empty((n_iter,
+        self.phi = np.empty((n_iter + 1,
                              self._model.n_phi),
                             dtype=np.float)
         self.phi.fill(np.nan)
         self.phi[0, :] = phi0
 
-        self.B = np.empty((n_iter,
+        self.B = np.empty((n_iter + 1,
                            self._model.n_bands),
                           dtype=np.float)
         self.B.fill(np.nan)
         self.B[0, :] = B0
 
-        self.lnpost = np.empty(n_iter, dtype=np.float)
+        self.lnpost = np.empty(n_iter + 1, dtype=np.float)
         self.lnpost.fill(np.nan)
 
-        self.pix_lnpost = np.empty((n_iter, self._model.n_pix),
+        self.pix_lnpost = np.empty((n_iter + 1, self._model.n_pix),
                                    dtype=np.float)
         self.pix_lnpost.fill(np.nan)
 
         # Make a structured array for the complex blob data
-        self.blobs = np.empty(n_iter, dtype=self._model.blob_dtype)
+        self.blobs = np.empty(n_iter + 1, dtype=self._model.blob_dtype)
         self.blobs.fill(np.nan)
 
         # Initialize the starting point of the chains
@@ -186,10 +192,11 @@ def pixel_mh_sampler(args):
     theta = np.copy(theta0)
     post = post0
     # MH on each parameter
+    blob = None
     for i in xrange(theta0.shape[0]):
         # Gaussian proposal for parameter i, only
         theta_new = theta.copy()
-        theta_new[i] = theta_prop[i] * np.random.randn()
+        theta_new[i] += theta_prop[i] * np.random.randn()
         lnpost_new, blob_new = MODEL.sample_pixel(theta_new, phi0, B0, ipix)
         r = lnpost_new / post
         reject = True

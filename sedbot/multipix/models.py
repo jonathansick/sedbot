@@ -117,7 +117,6 @@ class MultiPixelBaseModel(object):
         blob : ndarray
             Structured array with metadata for this pixel sample.
         """
-        print "theta_i", theta_i
         lnprior = self._pixel_ln_prior(theta_i, ipix)
         lnprior += self._global_ln_prior(phi)
         if not np.isfinite(lnprior):
@@ -197,9 +196,7 @@ class MultiPixelBaseModel(object):
         Excludes global priors.
         """
         lnp = 0
-        print "theta", theta
         for i, name in enumerate(self._theta_params):
-            print i, name
             lnp += self._theta_priors[ipix][name](theta[i])
         return lnp
 
@@ -271,7 +268,6 @@ def interp_z_likelihood(args):
     # metallicty bracket
     for name, val in itertools.chain(zip(theta_names, theta),
                                      zip(phi_names, phi)):
-        print name, val
         if name == 'logmass':
             logm = val
         elif name == 'logZZsol':
