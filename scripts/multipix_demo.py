@@ -65,6 +65,11 @@ def main():
                           pset=pset)
         return m
 
+    # Gaussian sigmas for step proposal distributions
+    theta_step = np.array([0.05, 0.05, 0.1, 0.05, 0.1, 0.1, 0.1])
+    phi_step = np.array([5.])
+
+    # Initial values of the chains
     theta0 = [9., 0.0, 3., 1., 0.1, 0.3, 0.2]
     theta0 = np.array([theta0, theta0])
     phi0 = np.array([785. * 1000.])
@@ -74,7 +79,9 @@ def main():
     sampler.sample(5,
                    theta0=theta0,
                    phi0=phi0,
-                   B0=B0)
+                   B0=B0,
+                   theta_prop=theta_step,
+                   phi_prop=phi_step)
 
 
 def make_dataset(npix, bands):

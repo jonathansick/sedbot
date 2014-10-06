@@ -6,6 +6,8 @@ Sample for Multi Pixel Gibbs MCMC.
 
 import numpy as np
 
+MODEL = None
+
 
 class MultiPixelGibbsBgSampler(object):
     """MH-in-Gibbs sampler for three level hierarchical models of
@@ -30,7 +32,7 @@ class MultiPixelGibbsBgSampler(object):
         self._model = self._model_initializer()
 
         # Set up a pixel compute pool
-        self._m = self._init_pixel_compute_pool()
+        self._map = self._init_pixel_compute_pool()
 
     def _init_pixel_compute_pool(self):
         """Initialize an ipython.parallel pool for processing pixels."""
@@ -70,18 +72,17 @@ class MultiPixelGibbsBgSampler(object):
 
         # initialize memory
         i0 = self._init_chains(n_iter, theta0, phi0, B0)
-        # for i in xrange(i0, i0 + n_iter):
-        #     # Sample for all pixels
-        #     args = []
-        #     for ipix in xrange(self._model.n_pix):
-        #         _post0 = self.lnpost[i0 - 1]
-        #         _theta0 = self.theta[i0 - 1, ipix, :]
-        #         _phi0 = self.phi[i0 - 1, :]
-        #         _B0 = self.B[i0 - 1, :]
-        #         theta_prop = None
-        #         args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
-        #     results = self._M(pixel_mh_sampler, args)
-        #     print results
+        for i in xrange(i0, i0 + n_iter):
+            # Sample for all pixels
+            args = []
+            for ipix in xrange(self._model.n_pix):
+                _post0 = self.lnpost[i0 - 1]
+                _theta0 = self.theta[i0 - 1, ipix, :]
+                _phi0 = self.phi[i0 - 1, :]
+                _B0 = self.B[i0 - 1, :]
+                args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
+            results = self._map(pixel_mh_sampler, args)
+            print results
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
         """Initialize memory
@@ -129,10 +130,6 @@ class MultiPixelGibbsBgSampler(object):
             for k, v in blobs.iteritems():
                 self.blobs[0][k][ipix] = v
 
-        print "lnpost", self.lnpost
-        print "pix_lnpost", self.pix_lnpost
-        print "blobs", self.blobs
-
         return 1
 
 
@@ -142,8 +139,8 @@ def pixel_mh_sampler(args):
     This function is design to be called by a ``map`` function, hence all
     arguments are wrapped in a single tuple, ``args``.
 
-    Paramters
-    ---------
+    Parameters
+    ----------
     ipix : int
         Pixel index
     post0 : float
@@ -164,14 +161,33 @@ def pixel_mh_sampler(args):
         Final posterior probability *for this pixel*.
     theta : ndarray
         Theta parameters from this Gibbs step.
-    blob : list
+    blob : dict
         Stellar population metadata for this pixel given the updated `theta`
         parameters.
     """
     global MODEL
-    pix, post0, theta0, phi0, B0, theta_prop = args
+    ipix, post0, theta0, phi0, B0, theta_prop = args
     theta = np.copy(theta0)
+    post = post0
+    # MH on each parameter
     for i in xrange(theta0.shape[0]):
-        # MH on each parameter
-        pass
+        # Gaussian proposal for parameter i, only
+        theta_new = theta.copy()
+        theta_new[i] = theta_prop[i] * np.random.randn()
+        lnpost_new, blob_new = MODEL.sample_pixel(theta_new, phi0, B0, ipix)
+        r = lnpost_new / post
+        reject = True
+        if ~np.isfinite(r):
+            pass
+        elif r > 1.:
+            reject = False
+        else:
+            x = np.random.rand(0., 1.)
+            if r > x:
+                reject = False
+        if not reject:
+            # adopt new point
+            theta = theta_new
+            blob = blob_new
+            post = lnpost_new
     return post, theta, blob
