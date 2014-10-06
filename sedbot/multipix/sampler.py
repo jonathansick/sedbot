@@ -4,6 +4,9 @@
 Sample for Multi Pixel Gibbs MCMC.
 """
 
+from collections import OrderedDict
+# import pprint
+import json
 import numpy as np
 
 MODEL = None
@@ -164,6 +167,32 @@ class MultiPixelGibbsBgSampler(object):
         self._phi_n_accept = np.zeros(self._model.n_phi, dtype=np.int)
 
         return 1
+
+    @property
+    def median_theta_faccept(self):
+        """Median acceptance fraction across all pixels for each parameter"""
+        n_samples = float(self.theta.shape[0])
+        faccept = np.median(self._theta_n_accept / n_samples, axis=0)
+        return faccept
+
+    @property
+    def phi_faccept(self):
+        """Acceptance fraction of phi parameters."""
+        n_samples = float(self.theta.shape[0])
+        return self._phi_n_accept / n_samples
+
+    def print_faccept(self):
+        """Printed report of the acceptance fraction statistics"""
+        faccept = self.median_theta_faccept
+        # FIXME Model should have public accessort to param names
+        d = OrderedDict(zip(self._model._theta_params, faccept))
+        # pp = pprint.PrettyPrinter(indent=4)
+        # pp.pprint(d)
+        print("theta")
+        print(json.dumps(d, indent=4))
+        print("phi")
+        d = OrderedDict(zip(self._model._phi_params, self.phi_faccept))
+        print(json.dumps(d, indent=4))
 
 
 def pixel_mh_sampler(args):
