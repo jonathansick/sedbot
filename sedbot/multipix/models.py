@@ -227,9 +227,9 @@ class MultiPixelBaseModel(object):
         Parameters
         ----------
         theta : ndarray
-            An `(n_pixels,)` structured array with pixel-level parameters
+            An `(n_pixels, n_theta)` array with pixel-level parameters
         phi : ndarray
-            A `(1,)` structured array with the global-level parameters.
+            A `(n_theta,)` array with the global-level parameters.
         model_seds : ndarray
             A ``(nbands, npix)`` array of model SEDs from the blob data
             of the previous step. This lets us skip the task of recomputing
@@ -245,19 +245,22 @@ class MultiPixelBaseModel(object):
             Blobs for individual pixels
         """
         # Reduce the model SEDs to just the observed bands
-        model = model_seds[self.band_indices, :]
+        model = model_seds[:, self.band_indices]
         all_residuals = self._seds - model
-        residuals = all_residuals.mean(axis=0)  # FIXME?
-        print residuals
+        residuals = all_residuals.mean(axis=0)
 
         # Sample new values of B (for each bandpass) from a normal dist.
-        # TODO
+        obs_var = self._errs ** 2.
+        mean = np.sum(residuals / obs_var) / np.sum(1. / obs_var)
+        variance = 1. / np.sum(1. / obs_var)
+        B_new = np.sqrt(variance) * np.random.randn(self.n_bands) + mean
 
         # reset B for any images with fixed background
         # TODO
 
         # recompute the ln probability
-        return self.sample_global(theta, phi)
+        lnprob, pixel_lnprobs, blobs = self.sample_global(theta, phi, B_new)
+        return B_new, lnprob, pixel_lnprobs, blobs
 
 
 def interp_z_likelihood(args):

@@ -94,21 +94,19 @@ class MultiPixelGibbsBgSampler(object):
                 if blob is not None:
                     for k, v in blob.iteritems():
                         self.blobs[i][k][ipix] = v
-                    else:
-                        # repeat previous blob values
-                        for k in self.blobs.dtype.fields:
-                            self.blobs[i][k][ipix] = self.blobs[i - 1][k][ipix]
+                else:
+                    # repeat previous blob values
+                    for k in self.blobs.dtype.fields:
+                        self.blobs[i][k][ipix] = self.blobs[i - 1][k][ipix]
                 self._theta_n_accept[ipix, :] += theta_accept
 
-            # TODO Update the background
-            self.B[i, :] = self.B[i - 1, :]
-
-            # Update the global posterior probability with these pixel
-            # values and new background
-            global_lnp, pixel_lnp, pixel_blobs \
-                = self._model.sample_global(self.theta[i, :, :],
-                                            self.phi[i - 1, :],
-                                            self.B[i, :])
+            # Update the background
+            model_seds = self.blobs[i]['model_sed']
+            B_new, global_lnp, pixel_lnp, pixel_blobs \
+                = self._model.update_background(self.theta[i, :, :],
+                                                self.phi[i - 1, :],
+                                                model_seds)
+            self.B[i, :] = B_new
 
             # Sample the global parameters
             phi_new, global_lnp, pixel_lnps, pixel_blobs, n_accept \
