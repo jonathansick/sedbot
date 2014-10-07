@@ -16,6 +16,8 @@ from the finite probability domain.
 import numpy as np
 import scipy.stats
 
+from sedbot.photconv import sb_to_mass
+
 
 class RandomVariable(object):
     """Base class for random variables that encapsulate a `scipy.stats`
@@ -63,6 +65,32 @@ class LnUniform(RandomVariable):
         super(LnUniform, self).__init__()
         self._limits = (lower, upper)
         self._rv = scipy.stats.uniform(loc=lower, scale=upper - lower)
+
+
+class LnUniformMass(LnUniform):
+    """Log of uniform probability intended to be used as an uninformative
+    prior on the log-mass given a range of log M/L.
+
+    Parameters
+    ----------
+    logml_min : float
+        Minimum log M/L value.
+    logml_max : float
+        Maximum log M/L value.
+    sb : float
+        Surface brightness, mag / arcsec^2.
+    D_pc : float
+        Distance in parsecs.
+    area : float
+        Area of pixel, in square arcsecs.
+    msun : float
+        Solar magnitude. With python-fsps this can be obtained using
+        ``fsps.get_filter(band_name).msun_ab``.
+    """
+    def __init__(self, logml_min, logml_max, sb, D_pc, area, msun):
+        low_mass = sb_to_mass(sb, msun, logml_min, area, D_pc)
+        high_mass = sb_to_mass(sb, msun, logml_max, area, D_pc)
+        super(LnUniformMass, self).__init__(low_mass, high_mass)
 
 
 class LnNormal(RandomVariable):
