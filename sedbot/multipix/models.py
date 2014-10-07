@@ -256,7 +256,8 @@ class MultiPixelBaseModel(object):
         B_new = np.sqrt(variance) * np.random.randn(self.n_bands) + mean
 
         # reset B for any images with fixed background
-        # TODO
+        for band_index, level in self._fixed_bg.iteritems():
+            B_new[band_index] = level
 
         # recompute the ln probability
         lnprob, pixel_lnprobs, blobs = self.sample_global(theta, phi, B_new)
