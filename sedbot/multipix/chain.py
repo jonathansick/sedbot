@@ -78,3 +78,23 @@ class MultiPixelChain(Table):
             return chain, colnames
         else:
             return chain
+
+    def sed_chain_for_pixel(self, ipix):
+        """Provides a chain array for the modelled SED of a single pixel.
+
+        Parameters
+        ----------
+        ipix : int
+            Pixel ID.
+
+        Returns
+        -------
+        chain : ndarray
+            A ``(n_sample, n_band)`` numpy array. The order of bandpasses
+            corresponds to ``self.meta['compute_bands']``.
+        """
+        # nbands = len(self.meta['compute_bands'])
+        # nsamples = len(self)
+        # arr = np.empty()
+        arr = self['model_sed'][:, ipix, :]
+        return arr
