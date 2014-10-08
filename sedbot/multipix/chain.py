@@ -98,3 +98,10 @@ class MultiPixelChain(Table):
         # arr = np.empty()
         arr = self['model_sed'][:, ipix, :]
         return arr
+
+    def sed_residuals_chain_for_pixel(self, ipix):
+        """Chain of model - observed SED residuals for a single pixel."""
+        idx = self.meta['band_indices']
+        model = self['model_sed'][:, ipix, idx]
+        obs = self.meta['sed'][ipix, :]
+        return model - obs
