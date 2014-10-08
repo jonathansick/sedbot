@@ -260,10 +260,11 @@ class MultiPixelGibbsBgSampler(object):
     def table(self):
         """An :class:`astropy.table.Table` with the chain."""
         meta = OrderedDict((
-            ('theta_f_accept', OrderedDict(zip(self._model.theta_params,
-                                               self.median_theta_faccept))),
-            ('phi_f_accept', OrderedDict(zip(self._model.phi_params,
-                                             self.phi_faccept))),
+            ('theta_f_accept',
+                json.dumps(dict(zip(self._model.theta_params,
+                                    self.median_theta_faccept)))),
+            ('phi_f_accept', json.dumps(dict(zip(self._model.phi_params,
+                                                 self.phi_faccept)))),
             ('obs_bands', self._model._obs_bands),
             ('compute_bands', self._model._compute_bands),
             ('band_indices', self._model.band_indices),
