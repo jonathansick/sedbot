@@ -12,6 +12,9 @@ import numpy as np
 from astropy.utils.console import ProgressBar
 from astropy.table import Table, hstack
 
+from .chain import MultiPixelChain
+
+
 MODEL = None
 
 
@@ -282,7 +285,10 @@ class MultiPixelGibbsBgSampler(object):
         background_names = ["B_{0}".format(n) for n in self._model._obs_bands]
         B_table = Table(self.B, names=background_names)
         blob_table = Table(self.blobs)
-        tbl = hstack((theta_table, phi_table, B_table, blob_table))
+        tbl = MultiPixelChain(hstack((theta_table,
+                                      phi_table,
+                                      B_table,
+                                      blob_table)))
 
         return tbl
 
