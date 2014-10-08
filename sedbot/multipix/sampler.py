@@ -9,6 +9,8 @@ from collections import OrderedDict
 import json
 import numpy as np
 
+from astropy.utils.console import ProgressBar
+
 MODEL = None
 
 
@@ -69,67 +71,77 @@ class MultiPixelGibbsBgSampler(object):
         phi_prop : ndarray
             Standard deviations of Gaussian proposal distributions for
             phi (global) parameters. Leave as ``None`` to use the model's
-            defaults
+            defaults.
+        theta0 : ndarray
+            Initial values for the theta parameters, a ``(n_pix, n_theta)``
+            array.
+        phi0 : ndarray
+            Initial values for the phi parameters, a ``(n_phi)`` array.
+        B0 : ndarray
+            Initial values for the background, a ``(n_band)`` array.
         """
         global MODEL
 
         # initialize memory
         i0 = self._init_chains(n_iter, theta0, phi0, B0)
 
-        for i in xrange(i0, i0 + n_iter):
-            print "Iteration {0:d}".format(i)
-            # Sample for all pixels
-            args = []
-            for ipix in xrange(self._model.n_pix):
-                _post0 = self.pix_lnpost[i - 1, ipix]
-                _theta0 = self.theta[i - 1, ipix, :]
-                _phi0 = self.phi[i - 1, :]
-                _B0 = self.B[i - 1, :]
-                args.append((ipix, _post0, _theta0, _phi0, _B0, theta_prop))
-            results = self._map(pixel_mh_sampler, args)
-            for ipix, result in enumerate(results):
-                lnpost, theta, blob, theta_accept = result
-                self.pix_lnpost[i, ipix] = lnpost
-                self.theta[i, ipix, :] = theta
-                if blob is not None:
-                    for k, v in blob.iteritems():
-                        self.blobs[i][k][ipix] = v
-                else:
-                    # repeat previous blob values
-                    for k in self.blobs.dtype.fields:
-                        self.blobs[i][k][ipix] = self.blobs[i - 1][k][ipix]
-                self._theta_n_accept[ipix, :] += theta_accept
+        with ProgressBar(n_iter) as bar:
+            for i in xrange(i0, i0 + n_iter):
+                # Sample for all pixels
+                args = []
+                for ipix in xrange(self._model.n_pix):
+                    _post0 = self.pix_lnpost[i - 1, ipix]
+                    _theta0 = self.theta[i - 1, ipix, :]
+                    _phi0 = self.phi[i - 1, :]
+                    _B0 = self.B[i - 1, :]
+                    args.append((ipix, _post0, _theta0, _phi0, _B0,
+                                 theta_prop))
+                results = self._map(pixel_mh_sampler, args)
+                for ipix, result in enumerate(results):
+                    lnpost, theta, blob, theta_accept = result
+                    self.pix_lnpost[i, ipix] = lnpost
+                    self.theta[i, ipix, :] = theta
+                    if blob is not None:
+                        for k, v in blob.iteritems():
+                            self.blobs[i][k][ipix] = v
+                    else:
+                        # repeat previous blob values
+                        for k in self.blobs.dtype.fields:
+                            self.blobs[i][k][ipix] = self.blobs[i - 1][k][ipix]
+                    self._theta_n_accept[ipix, :] += theta_accept
 
-            # Update the background
-            model_seds = self.blobs[i]['model_sed']
-            B_new, global_lnp, pixel_lnp, pixel_blobs \
-                = self._model.update_background(self.theta[i, :, :],
-                                                self.phi[i - 1, :],
-                                                model_seds)
-            self.B[i, :] = B_new
+                # Update the background
+                model_seds = self.blobs[i]['model_sed']
+                B_new, global_lnp, pixel_lnp, pixel_blobs \
+                    = self._model.update_background(self.theta[i, :, :],
+                                                    self.phi[i - 1, :],
+                                                    model_seds)
+                self.B[i, :] = B_new
 
-            # Sample the global parameters
-            phi_new, global_lnp, pixel_lnps, pixel_blobs, n_accept \
-                = self._global_mh(i,
-                                  global_lnp,
-                                  self.phi[i - 1, :],
-                                  self.theta[i, :, :],
-                                  self.B[i, :],
-                                  phi_prop)
-            # fill in new values to chain.
-            self.phi[i, :] = phi_new
-            self.lnpost[i] = global_lnp
-            self._phi_n_accept += n_accept
-            # Update ln post and blob data for all pixels too
-            # it was done for the pixel-only step, but these values have
-            # changed given the new background, etc.
-            if pixel_lnps is not None:
-                for ipix, lnp in enumerate(pixel_lnps):
-                    self.pix_lnpost[i, ipix] = lnp
-            if pixel_blobs is not None:
-                for ipix, blobs in enumerate(pixel_blobs):
-                    for k, v in blobs.iteritems():
-                        self.blobs[i][k][ipix] = v
+                # Sample the global parameters
+                phi_new, global_lnp, pixel_lnps, pixel_blobs, n_accept \
+                    = self._global_mh(i,
+                                      global_lnp,
+                                      self.phi[i - 1, :],
+                                      self.theta[i, :, :],
+                                      self.B[i, :],
+                                      phi_prop)
+                # fill in new values to chain.
+                self.phi[i, :] = phi_new
+                self.lnpost[i] = global_lnp
+                self._phi_n_accept += n_accept
+                # Update ln post and blob data for all pixels too
+                # it was done for the pixel-only step, but these values have
+                # changed given the new background, etc.
+                if pixel_lnps is not None:
+                    for ipix, lnp in enumerate(pixel_lnps):
+                        self.pix_lnpost[i, ipix] = lnp
+                if pixel_blobs is not None:
+                    for ipix, blobs in enumerate(pixel_blobs):
+                        for k, v in blobs.iteritems():
+                            self.blobs[i][k][ipix] = v
+
+                bar.update()
 
     def _global_mh(self, i, lnpost0, phi, theta, B, phi_prop):
         """Perform MH-in-Gibbs at the global level."""
