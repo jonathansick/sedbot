@@ -15,7 +15,7 @@ from .tools import prep_plot_dir
 def chain_plot(path, flatchain, param_names, limits=None,
                truths=None, param_labels=None, figsize=(3.5, 10)):
     """Diagnostic plot of walker chains.
-    
+
     The chain plot shows lineplots of each walker, for each parameter. This
     plot can be useful for assessing convergence, and establishing an
     appropriate burn-in limit.
@@ -60,7 +60,10 @@ def chain_plot(path, flatchain, param_names, limits=None,
         ax.set_xlim(steps.min(), steps.max())
         # if limits is not None and name in limits:
         #     ax.set_ylim(*limit)
-        ax.set_ylabel(name)
+        if param_labels:
+            ax.set_ylabel(param_labels[i])
+        else:
+            ax.set_ylabel(name)
         axes[name] = ax
         if i < len(param_names) - 1:
             for tl in ax.get_xmajorticklabels():
