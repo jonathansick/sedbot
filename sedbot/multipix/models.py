@@ -246,13 +246,11 @@ class MultiPixelBaseModel(object):
         """
         # Reduce the model SEDs to just the observed bands
         model = model_seds[:, self.band_indices]
-        all_residuals = self._seds - model
-        residuals = all_residuals.mean(axis=0)
 
         # Sample new values of B (for each bandpass) from a normal dist.
         obs_var = self._errs ** 2.
-        mean = np.sum(residuals / obs_var) / np.sum(1. / obs_var)
-        variance = 1. / np.sum(1. / obs_var)
+        mean = np.average(self._seds - model, weights=1. / obs_var, axis=0)
+        variance = 1. / np.sum(1. / obs_var, axis=0)
         B_new = np.sqrt(variance) * np.random.randn(self.n_bands) + mean
 
         # reset B for any images with fixed background
