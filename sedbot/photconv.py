@@ -181,6 +181,34 @@ def sb_to_luminosity(sb, msun, A, d):
         Area of region in square arcseconds.
     d : ndarray
         Distance in parsecs.
+
+    Returns
+    -------
+    logLsun : ndarray
+        Log of luminosity in solar units.
     """
     m = sb - 5. * np.log10(d) + 5. - msun
     return np.log10(A * 10. ** (-0.4 * m))
+
+
+def mjy_to_luminosity(mjy, msun, d):
+    """Convert an SED in µJy to log solar luminosities.
+
+    Parameters
+    ----------
+    mjy : ndarray
+        Flux in microjankies.
+    msun : float
+        Absolute magnitude of the Sun.
+    d : ndarray
+        Distance in parsecs.
+
+    Returns
+    -------
+    logLsun : ndarray
+        Log of luminosity in solar units.
+    """
+    dmod = 5. * np.log10(d) - 5.
+    AB = 23.9 - 2.5 * np.log10(mjy)
+    logLsol = -0.4 * (AB - dmod - msun)
+    return logLsol
