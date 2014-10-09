@@ -174,6 +174,7 @@ class MultiPixelGibbsBgSampler(object):
                     reject = False
             if not reject:
                 # adopt new point
+                phi = phi_new
                 lnpost = global_lnp
                 lnpost_pixel = pixel_lnp
                 blobs = pixel_blobs
