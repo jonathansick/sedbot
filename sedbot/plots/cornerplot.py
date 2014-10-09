@@ -11,10 +11,10 @@ import matplotlib as mpl
 from .tools import prep_plot_dir, escape_latex
 
 
-def triangle_plot(path, flatchain, param_names, limits,
+def triangle_plot(path, flatchain, param_names, limits=None,
                   figsize=(5, 5), truths=None, param_labels=None):
     """Make a corner plot using the triangle.py package.
-    
+
     Triangle/corner plots are convenient visualizations of posterior
     distributions and covariances between parameters.
 
