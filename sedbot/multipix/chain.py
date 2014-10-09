@@ -41,7 +41,7 @@ class MultiPixelChain(Table):
 
         dtype = [(n, np.float) for n in colnames]
         arr = np.empty(len(self), dtype=np.dtype(dtype))
-        single_value_fields = self.meta['phi_params'] \
+        single_value_fields = list(self.meta['phi_params']) \
             + ["B_{0}".format(n) for n in self.meta['obs_bands']]
         for i, n in enumerate(colnames):
             print n
