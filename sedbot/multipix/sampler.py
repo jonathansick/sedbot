@@ -306,7 +306,8 @@ class MultiPixelGibbsBgSampler(object):
             ('theta_params', self._model.theta_params),
             ('phi_params', self._model.phi_params),
             ('sed', self._model._seds),
-            ('sed_err', self._model._errs)))
+            ('sed_err', self._model._errs),
+            ('pixels', self._model.pixel_metadata)))
         # Make tables for individual chains; stack later
         # FIXME should axis order be changed for theta throughout the sampler?
         # or I can just continue to swarp aces here

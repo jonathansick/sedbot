@@ -31,6 +31,7 @@ class MultiPixelBaseModel(object):
         # Containers for SEDs of all pixels
         self._seds = None
         self._errs = None
+        self.pixel_metadata = None
 
         # Dict of band index, background level
         # Use this so that certain bands can always have a fixed background
@@ -353,6 +354,9 @@ class ThreeParamSFH(MultiPixelBaseModel):
         SEDs in µJy, shape ``(npix, nbands)``.
     seds : ndarray
         SEDs uncertainties in µJy, shape ``(npix, nbands)``.
+    pixel_metadata : ndarray
+        Arbitrary structured array with metadata about the pixels. This
+        will be appended to the chain metadata under the `'pixels'` field.
     bands : list
         List of bandpass names corresponding to the ``seds``
     compute_bands : list
@@ -362,6 +366,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
         dictionary.
     """
     def __init__(self, seds, sed_errs, sed_bands,
+                 pixel_metadata=None,
                  theta_priors=None,
                  phi_priors=None,
                  compute_bands=None,
@@ -369,6 +374,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
         super(ThreeParamSFH, self).__init__(pset=pset)
         self._seds = seds
         self._errs = sed_errs
+        self.pixel_metadata = pixel_metadata
         self._obs_bands = sed_bands
         if compute_bands is None:
             self._compute_bands = self._obs_bands
