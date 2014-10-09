@@ -9,9 +9,12 @@ from collections import OrderedDict
 import json
 import numpy as np
 
-from astropy.utils.console import ProgressBar
-from astropy.table import Table, hstack
+import fsps
 
+from astropy.utils.console import ProgressBar
+from astropy.table import Table, hstack, Column
+
+from sedbot.photconv import mjy_to_luminosity
 from .chain import MultiPixelChain
 
 
@@ -263,14 +266,18 @@ class MultiPixelGibbsBgSampler(object):
     @property
     def table(self):
         """An :class:`astropy.table.Table` with the chain."""
+        msuns = np.array([fsps.get_filter(n).msun_ab
+                          for n in self._model.computed_bands])
+        theta_f_accept = json.dumps(dict(zip(self._model.theta_params,
+                                             self.median_theta_faccept)))
+        phi_f_accept = json.dumps(dict(zip(self._model.phi_params,
+                                           self.phi_faccept)))
         meta = OrderedDict((
-            ('theta_f_accept',
-                json.dumps(dict(zip(self._model.theta_params,
-                                    self.median_theta_faccept)))),
-            ('phi_f_accept', json.dumps(dict(zip(self._model.phi_params,
-                                                 self.phi_faccept)))),
-            ('obs_bands', self._model._obs_bands),
-            ('compute_bands', self._model._compute_bands),
+            ('theta_f_accept', theta_f_accept),
+            ('phi_f_accept', phi_f_accept),
+            ('obs_bands', self._model.observed_bands),
+            ('compute_bands', self._model.computed_bands),
+            ('msun_ab', msuns),
             ('band_indices', self._model.band_indices),
             ('theta_params', self._model.theta_params),
             ('phi_params', self._model.phi_params),
@@ -283,13 +290,24 @@ class MultiPixelGibbsBgSampler(object):
                             names=self._model.theta_params,
                             meta=meta)
         phi_table = Table(self.phi, names=self._model.phi_params)
-        background_names = ["B_{0}".format(n) for n in self._model._obs_bands]
+        background_names = ["B_{0}".format(n)
+                            for n in self._model.observed_bands]
         B_table = Table(self.B, names=background_names)
         blob_table = Table(self.blobs)
         tbl = MultiPixelChain(hstack((theta_table,
                                       phi_table,
                                       B_table,
                                       blob_table)))
+
+        # Add M/L computations for each computed band.
+        for i, (band_name, msun) in enumerate(zip(self._model.computed_bands,
+                                                  msuns)):
+            logLsol = mjy_to_luminosity(tbl['model_sed'][:, :, i],
+                                        msun,
+                                        np.atleast_2d(tbl['d']).T)
+            ml = tbl['logMstar'] - logLsol
+            colname = "logML_{0}".format(band_name)
+            tbl.add_column(Column(name=colname, data=ml))
 
         return tbl
 

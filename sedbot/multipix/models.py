@@ -67,6 +67,18 @@ class MultiPixelBaseModel(object):
                          for b in self._obs_bands])
 
     @property
+    def computed_bands(self):
+        """Names of bandpasses in the `'model_sed'` metadata. This can be a
+        superset of :attr:``observed_bands``.
+        """
+        return self._compute_bands
+
+    @property
+    def observed_bands(self):
+        """Names of bandpasses in the *observed* SED."""
+        return self._obs_bands
+
+    @property
     def n_pix(self):
         return self._seds.shape[0]
 
