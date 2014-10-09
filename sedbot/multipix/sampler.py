@@ -64,7 +64,8 @@ class MultiPixelGibbsBgSampler(object):
                phi_prop=None,
                theta0=None,
                phi0=None,
-               B0=None):
+               B0=None,
+               chain=None):
         """Sample for `n_iter` Gibbs steps.
 
         Parameters
@@ -86,8 +87,31 @@ class MultiPixelGibbsBgSampler(object):
             Initial values for the phi parameters, a ``(n_phi)`` array.
         B0 : ndarray
             Initial values for the background, a ``(n_band)`` array.
+        chain : :class:`sedbot.chain.MultiPixelChain`
+            A previously-built chain, whose last sample will be used
+            as the starting points for this sampling (in liue of setting
+            `theta0`, `phi0` and `B0` manually).
         """
         global MODEL
+
+        if chain is not None:
+            theta0 = np.empty((self._model.n_pix, self._model.n_theta),
+                              dtype=np.float)
+            for i, n in enumerate(self._model.theta_params):
+                theta0[:, i] = chain[n][-1]
+
+            phi0 = np.empty(self._model.n_phi, dtype=np.float)
+            for i, n in enumerate(self._model.phi_params):
+                phi0[i] = chain[n][-1]
+
+            B0 = np.empty(self._model.n_bands, dtype=np.float)
+            for i, n in enumerate(self._model.observed_bands):
+                name = "B_{0}".format(n)
+                B0[i] = chain[name][-1]
+        else:
+            assert theta0 is not None
+            assert phi0 is not None
+            assert B0 is not None
 
         # initialize memory
         i0 = self._init_chains(n_iter, theta0, phi0, B0)
