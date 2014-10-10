@@ -95,6 +95,9 @@ class MultiPixelChain(Table):
     def sed_chain_for_pixel(self, ipix):
         """Provides a chain array for the modelled SED of a single pixel.
 
+        .. note:: The modelled background *is not added* because the modelled
+           SED may be a superset of the observed SED.
+
         Parameters
         ----------
         ipix : int
@@ -106,15 +109,37 @@ class MultiPixelChain(Table):
             A ``(n_sample, n_band)`` numpy array. The order of bandpasses
             corresponds to ``self.meta['compute_bands']``.
         """
-        # nbands = len(self.meta['compute_bands'])
-        # nsamples = len(self)
-        # arr = np.empty()
         arr = self['model_sed'][:, ipix, :]
         return arr
 
-    def sed_residuals_chain_for_pixel(self, ipix):
-        """Chain of model - observed SED residuals for a single pixel."""
+    def sed_residuals_chain_for_pixel(self, ipix, add_background=True):
+        """Chain of model - observed SED residuals for a single pixel.
+
+        Parameters
+        ----------
+        ipix : int
+            Pixel ID.
+        add_background : bool
+            If ``True`` then the background is added to the modelled SED.
+
+        Returns
+        -------
+        residuals : ndarray
+            A ``(n_sample, n_band)`` numpy array. The order of bandpasses
+            corresponds to ``self.meta['compute_bands']``.
+        """
         idx = self.meta['band_indices']
         model = self['model_sed'][:, ipix, idx]
+        if add_background:
+            model += self.background_array
         obs = self.meta['sed'][ipix, :]
         return model - obs
+
+    @property
+    def background_array(self):
+        """A ``(n_sample, n_band)`` ndarray of background samples."""
+        fields = ["B_{0}".format(n) for n in self.meta['obs_bands']]
+        B = np.empty((len(self), len(fields)), dtype=np.float)
+        for i, f in enumerate(fields):
+            B[:, i] = self[f]
+        return B
