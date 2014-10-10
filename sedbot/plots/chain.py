@@ -8,12 +8,13 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import matplotlib.gridspec as gridspec
+from matplotlib.ticker import MaxNLocator
 
 from .tools import prep_plot_dir
 
 
 def chain_plot(path, flatchain, param_names, limits=None,
-               truths=None, param_labels=None, figsize=(3.5, 10)):
+               truths=None, param_labels=None, figsize=(5, 10)):
     """Diagnostic plot of walker chains.
 
     The chain plot shows lineplots of each walker, for each parameter. This
@@ -45,19 +46,25 @@ def chain_plot(path, flatchain, param_names, limits=None,
 
     fig = Figure(figsize=figsize)
     canvas = FigureCanvas(fig)
-    gs = gridspec.GridSpec(len(param_names), 1, left=0.2, right=0.95,
-                           bottom=0.05, top=0.99,
-                           wspace=None, hspace=0.1,
+    gs = gridspec.GridSpec(len(param_names), 1, left=0.25, right=0.92,
+                           bottom=0.05, top=0.95,
+                           wspace=None, hspace=0.2,
                            width_ratios=None, height_ratios=None)
     axes = {}
     steps = np.arange(len(flatchain))
     for i, name in enumerate(param_names):
         ax = fig.add_subplot(gs[i])
-        ax.scatter(steps, flatchain[name],
+        if name == "d":
+            vals = flatchain['d'] / 1000.
+        else:
+            vals = flatchain[name]
+        ax.scatter(steps, vals,
                    s=1, marker='o',
                    facecolors='k', edgecolors='None',
                    rasterized=True)
         ax.set_xlim(steps.min(), steps.max())
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=4))
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
         # if limits is not None and name in limits:
         #     ax.set_ylim(*limit)
         if param_labels:
