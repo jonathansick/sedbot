@@ -131,7 +131,7 @@ class MultiPixelChain(Table):
         idx = self.meta['band_indices']
         model = self['model_sed'][:, ipix, idx]
         if add_background:
-            model += self.background_array
+            model += self.background_array * self.meta['area'][ipix]
         obs = self.meta['sed'][ipix, :]
         return model - obs
 
