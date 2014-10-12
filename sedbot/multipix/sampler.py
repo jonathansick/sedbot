@@ -87,6 +87,7 @@ class MultiPixelGibbsBgSampler(object):
             Initial values for the phi parameters, a ``(n_phi)`` array.
         B0 : ndarray
             Initial values for the background, a ``(n_band)`` array.
+            Background is in units of flux per arcsec^2.
         chain : :class:`sedbot.chain.MultiPixelChain`
             A previously-built chain, whose last sample will be used
             as the starting points for this sampling (in liue of setting
@@ -307,7 +308,8 @@ class MultiPixelGibbsBgSampler(object):
             ('phi_params', self._model.phi_params),
             ('sed', self._model._seds),
             ('sed_err', self._model._errs),
-            ('pixels', self._model.pixel_metadata)))
+            ('pixels', self._model.pixel_metadata),
+            ('area', self._model._areas)))
         # Make tables for individual chains; stack later
         # FIXME should axis order be changed for theta throughout the sampler?
         # or I can just continue to swarp aces here
