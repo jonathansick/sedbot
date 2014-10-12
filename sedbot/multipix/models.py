@@ -31,6 +31,7 @@ class MultiPixelBaseModel(object):
         # Containers for SEDs of all pixels
         self._seds = None
         self._errs = None
+        self._areas = None
         self.pixel_metadata = None
 
         # Dict of band index, background level
@@ -150,6 +151,7 @@ class MultiPixelBaseModel(object):
                                       phi,
                                       self._phi_params,
                                       B,
+                                      self._areas[ipix],
                                       self._seds[ipix, :],
                                       self._errs[ipix, :],
                                       self._obs_bands,
@@ -197,6 +199,7 @@ class MultiPixelBaseModel(object):
                          phi,
                          self._phi_params,
                          B,
+                         self._areas[ipix],
                          self._seds[ipix, :],
                          self._errs[ipix, :],
                          self._obs_bands,
@@ -234,6 +237,8 @@ class MultiPixelBaseModel(object):
         """Recompute the scalar background from a Normal distribution
         of model observation residuals.
 
+        Background is computed in units of :math:`F / \mathrm{arcsec}^2`.
+
         .. note:: Bandpasses with backgrounds fixed via the ``_fixed_bg``
                   attribute are respected.
 
@@ -261,8 +266,13 @@ class MultiPixelBaseModel(object):
         model = model_seds[:, self.band_indices]
 
         # Sample new values of B (for each bandpass) from a normal dist.
-        obs_var = self._errs ** 2.
-        mean = np.average(self._seds - model, weights=1. / obs_var, axis=0)
+        # All quantities are scaled to be per-area since pixels can
+        # have different areas.
+        A = np.atleast_2d(self._areas).T
+        obs_var = (self._errs / A) ** 2.
+        mean = np.average((self._seds - model) / A,
+                          weights=1. / obs_var,
+                          axis=0)
         variance = 1. / np.sum(1. / obs_var, axis=0)
         B_new = np.sqrt(variance) * np.random.randn(self.n_bands) + mean
 
@@ -281,8 +291,8 @@ def interp_z_likelihood(args):
     """
     global SP
 
-    theta, theta_names, phi, phi_names, B, sed, err, sed_bands, compute_bands \
-        = args
+    theta, theta_names, phi, phi_names, B, area, sed, err, sed_bands, \
+        compute_bands = args
 
     meta1 = np.empty(5, dtype=float)
     meta2 = np.empty(5, dtype=float)
@@ -332,7 +342,7 @@ def interp_z_likelihood(args):
 
     # Compute likelihood
     L = -0.5 * np.sum(
-        np.power((model_mjy[band_indices] + B - sed) / err, 2.))
+        np.power((model_mjy[band_indices] + B * area - sed) / err, 2.))
 
     # Scale statistics by the total mass
     blob = {"logMstar": logm + np.log10(meta[0]),  # log solar masses,
@@ -346,7 +356,8 @@ def interp_z_likelihood(args):
 
 
 class ThreeParamSFH(MultiPixelBaseModel):
-    """Model based on a three-parameter star formation history.
+    """Model based on a three-parameter star formation history,
+    and uncertainties in global scalar background, and distance.
 
     Parameters
     ----------
@@ -354,6 +365,8 @@ class ThreeParamSFH(MultiPixelBaseModel):
         SEDs in µJy, shape ``(npix, nbands)``.
     seds : ndarray
         SEDs uncertainties in µJy, shape ``(npix, nbands)``.
+    areas : ndarray
+        Area of each SED's pixel in arcsec^2. Shape ``(npix,)``.
     pixel_metadata : ndarray
         Arbitrary structured array with metadata about the pixels. This
         will be appended to the chain metadata under the `'pixels'` field.
@@ -365,7 +378,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
         Initialization arguments to :class:`fsps.StellarPopulation`, as a
         dictionary.
     """
-    def __init__(self, seds, sed_errs, sed_bands,
+    def __init__(self, seds, sed_errs, sed_bands, areas,
                  pixel_metadata=None,
                  theta_priors=None,
                  phi_priors=None,
@@ -374,6 +387,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
         super(ThreeParamSFH, self).__init__(pset=pset)
         self._seds = seds
         self._errs = sed_errs
+        self._areas = areas
         self.pixel_metadata = pixel_metadata
         self._obs_bands = sed_bands
         if compute_bands is None:
