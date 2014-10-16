@@ -288,6 +288,9 @@ class MultiPixelBaseModel(object):
 def interp_z_likelihood(args):
     """Generic single-pixel likeihood function where a single metallicity
     is linearly interpolated.
+
+    Note that the SED can contain values of NaN, those bands will be
+    automatically ignored from the likelihood calculation
     """
     global SP
 
@@ -341,7 +344,8 @@ def interp_z_likelihood(args):
     meta = interp_logz(zmet1, zmet2, logZZsol, meta1, meta2)
 
     # Compute likelihood
-    L = -0.5 * np.sum(
+    # Automatically ignores pixels with no measurement (Nan)
+    L = -0.5 * np.nansum(
         np.power((model_mjy[band_indices] + B * area - sed) / err, 2.))
 
     # Scale statistics by the total mass
