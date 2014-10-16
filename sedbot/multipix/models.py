@@ -89,6 +89,10 @@ class MultiPixelBaseModel(object):
         return self._seds.shape[1]
 
     @property
+    def n_computed_bands(self):
+        return len(self._compute_bands)
+
+    @property
     def n_theta(self):
         """Number of theta parameters."""
         return len(self._theta_params)
@@ -116,7 +120,7 @@ class MultiPixelBaseModel(object):
               ('logLbol', np.float, self.n_pix),
               ('logSFR', np.float, self.n_pix),
               ('logAge', np.float, self.n_pix),
-              ('model_sed', np.float, (self.n_pix, self.n_bands))]
+              ('model_sed', np.float, (self.n_pix, self.n_computed_bands))]
         return np.dtype(dt)
 
     def sample_pixel(self, theta_i, phi, B, ipix):
