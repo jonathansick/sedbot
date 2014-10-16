@@ -413,6 +413,8 @@ class ThreeParamSFH(MultiPixelBaseModel):
             self._compute_bands = self._obs_bands
         else:
             self._compute_bands = compute_bands
+            # Ensure compute bands is a superset of observed SED
+            assert set(self._compute_bands) >= set(self._obs_bands)
         self._theta_priors = theta_priors
         self._phi_priors = phi_priors
 
