@@ -249,7 +249,7 @@ class MultiPixelBaseModel(object):
         phi : ndarray
             A `(n_theta,)` array with the global-level parameters.
         model_seds : ndarray
-            A ``(nbands, npix)`` array of model SEDs from the blob data
+            A ``(npix, nbands)`` array of model SEDs from the blob data
             of the previous step. This lets us skip the task of recomputing
             SEDs before estimating a new background.
 
@@ -268,12 +268,23 @@ class MultiPixelBaseModel(object):
         # Sample new values of B (for each bandpass) from a normal dist.
         # All quantities are scaled to be per-area since pixels can
         # have different areas.
-        A = np.atleast_2d(self._areas).T
-        obs_var = (self._errs / A) ** 2.
-        mean = np.average((self._seds - model) / A,
-                          weights=1. / obs_var,
-                          axis=0)
-        variance = 1. / np.sum(1. / obs_var, axis=0)
+        # A = np.atleast_2d(self._areas).T
+        # obs_var = (self._errs / A) ** 2.
+        # mean = np.average(((self._seds - model) / A)[self._finite_seds],
+        #                   weights=1. / obs_var,
+        #                   axis=0)
+        # variance = 1. / np.sum(1. / obs_var, axis=0)
+
+        mean = np.empty(self.n_bands, dtype=np.float)
+        variance = np.empty(self.n_bands, dtype=np.float)
+        A = self._areas
+        # Do it band at a time so we can filter out NaNs in each band
+        for i in xrange(self.n_bands):
+            obs_var = (self._errs[:, i] / A) ** 2.
+            g = np.where(np.isfinite(self._seds[:, i]))[0]
+            mean[i] = np.average(((self._seds[:, i] - model[:, i]) / A)[g],
+                                 weights=1. / obs_var[g])
+            variance[i] = 1. / np.sum(1. / obs_var[g])
         B_new = np.sqrt(variance) * np.random.randn(self.n_bands) + mean
 
         # reset B for any images with fixed background
