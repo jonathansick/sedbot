@@ -7,6 +7,7 @@ Triangle plot.
 import numpy as np
 
 import matplotlib as mpl
+import triangle
 
 from .tools import prep_plot_dir, escape_latex
 
@@ -41,8 +42,6 @@ def triangle_plot(path, flatchain, param_names, limits=None,
         Optional list of names for each parameter to be used for the plot
         itself.
     """
-    from triangle import corner
-
     n_steps = len(flatchain)
     n_cols = len(param_names)
     samples = np.empty((n_steps, n_cols), dtype=float)
@@ -55,9 +54,12 @@ def triangle_plot(path, flatchain, param_names, limits=None,
         _labels = [escape_latex(n) for n in param_names]
 
     prep_plot_dir(path)
-    fig = corner(samples, labels=_labels, extents=limits, truths=truths,
-                 truth_color="#4682b4", scale_hist=False, quantiles=[],
-                 verbose=True, plot_contours=True, plot_datapoints=True,
-                 fig=None)
+    fig = triangle.corner(samples, labels=_labels, extents=limits,
+                          truths=truths,
+                          truth_color="#4682b4", scale_hist=False,
+                          quantiles=[],
+                          verbose=True, plot_contours=True,
+                          plot_datapoints=True,
+                          fig=None)
     fig.savefig(path)
     mpl.pyplot.close(fig)
