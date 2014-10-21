@@ -192,9 +192,9 @@ class MultiPixelGibbsBgSampler(object):
         n_accept = np.zeros(phi.shape[0], dtype=np.int)
         for j in xrange(phi.shape[0]):
             # Gaussian proposal for parameter j, only
-            phi_new = np.copy(phi)
             # Skip parameter advancement if proposal sigma is zero.
             if phi_prop[j] > 0.:
+                phi_new = np.copy(phi)
                 phi_new[j] += phi_prop[j] * np.random.randn()
                 global_lnp, pixel_lnp, pixel_blobs \
                     = self._model.sample_global(theta,
