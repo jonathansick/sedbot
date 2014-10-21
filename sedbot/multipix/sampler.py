@@ -99,6 +99,10 @@ class MultiPixelGibbsBgSampler(object):
         """
         global MODEL
 
+        # Keep these for storage in the HDF5 file later
+        self._theta_prop = theta_prop
+        self._phi_prop = phi_prop
+
         if chain is not None:
             theta0 = np.empty((self._model.n_pix, self._model.n_theta),
                               dtype=np.float)
@@ -312,6 +316,8 @@ class MultiPixelGibbsBgSampler(object):
             ('band_indices', self._model.band_indices),
             ('theta_params', self._model.theta_params),
             ('phi_params', self._model.phi_params),
+            ('theta_proposal_sigma', self._theta_prop),
+            ('phi_proposal_sigma', self._theta_prop),
             ('sed', self._model._seds),
             ('sed_err', self._model._errs),
             ('pixels', self._model.pixel_metadata),
