@@ -75,11 +75,15 @@ class MultiPixelGibbsBgSampler(object):
             parameters)
         theta_prop : ndarray
             Standard deviations of Gaussian proposal distribtions for
-            theta (pixel) parameters
+            theta (pixel) parameters. If any individual proposal sigma is
+            zero then that parameter will not be sampled (but instead kept
+            constant in the chain).
         phi_prop : ndarray
             Standard deviations of Gaussian proposal distributions for
             phi (global) parameters. Leave as ``None`` to use the model's
-            defaults.
+            defaults. If any individual proposal sigma is
+            zero then that parameter will not be sampled (but instead kept
+            constant in the chain).
         theta0 : ndarray
             Initial values for the theta parameters, a ``(n_pix, n_theta)``
             array.
@@ -185,28 +189,30 @@ class MultiPixelGibbsBgSampler(object):
         for j in xrange(phi.shape[0]):
             # Gaussian proposal for parameter j, only
             phi_new = np.copy(phi)
-            phi_new[j] += phi_prop[j] * np.random.randn()
-            global_lnp, pixel_lnp, pixel_blobs \
-                = self._model.sample_global(theta,
-                                            phi_new,
-                                            B)
-            ln_r = global_lnp - lnpost0
-            reject = True
-            if ~np.isfinite(ln_r):
-                pass
-            elif ln_r >= 0.:
-                reject = False
-            else:
-                x = np.random.rand(0., 1.)
-                if x < np.exp(ln_r):
+            # Skip parameter advancement if proposal sigma is zero.
+            if phi_prop[j] > 0.:
+                phi_new[j] += phi_prop[j] * np.random.randn()
+                global_lnp, pixel_lnp, pixel_blobs \
+                    = self._model.sample_global(theta,
+                                                phi_new,
+                                                B)
+                ln_r = global_lnp - lnpost0
+                reject = True
+                if ~np.isfinite(ln_r):
+                    pass
+                elif ln_r >= 0.:
                     reject = False
-            if not reject:
-                # adopt new point
-                phi = phi_new
-                lnpost = global_lnp
-                lnpost_pixel = pixel_lnp
-                blobs = pixel_blobs
-                n_accept[j] = 1
+                else:
+                    x = np.random.rand(0., 1.)
+                    if x < np.exp(ln_r):
+                        reject = False
+                if not reject:
+                    # adopt new point
+                    phi = phi_new
+                    lnpost = global_lnp
+                    lnpost_pixel = pixel_lnp
+                    blobs = pixel_blobs
+                    n_accept[j] = 1
         return phi, lnpost, lnpost_pixel, blobs, n_accept
 
     def _init_chains(self, n_iter, theta0, phi0, B0):
@@ -359,7 +365,9 @@ def pixel_mh_sampler(args):
     B0 : ndarray
         Initial values of the B, background, parameters.
     theta_prop : ndarray
-        Array of Gaussian proposal standard deviations.
+        Array of Gaussian proposal standard deviations. If an individual
+        proposal sigma is zero then that value will not be sampled,
+        and kept constant.
 
     Returns
     -------
@@ -384,23 +392,25 @@ def pixel_mh_sampler(args):
     n_accept = np.zeros(theta.shape[0], dtype=np.int)
     for i in xrange(theta0.shape[0]):
         # Gaussian proposal for parameter i, only
-        theta_new = theta.copy()
-        theta_new[i] += theta_prop[i] * np.random.randn()
-        lnpost_new, blob_new = MODEL.sample_pixel(theta_new, phi0, B0, ipix)
-        ln_r = lnpost_new - post
-        reject = True
-        if ~np.isfinite(ln_r):
-            pass
-        elif ln_r >= 0.:
-            reject = False
-        else:
-            x = np.random.rand(0., 1.)
-            if x < np.exp(ln_r):
+        if theta_prop[i] > 0.:
+            theta_new = theta.copy()
+            theta_new[i] += theta_prop[i] * np.random.randn()
+            lnpost_new, blob_new = MODEL.sample_pixel(theta_new,
+                                                      phi0, B0, ipix)
+            ln_r = lnpost_new - post
+            reject = True
+            if ~np.isfinite(ln_r):
+                pass
+            elif ln_r >= 0.:
                 reject = False
-        if not reject:
-            # adopt new point
-            theta = theta_new
-            blob = blob_new
-            post = lnpost_new
-            n_accept[i] = 1
+            else:
+                x = np.random.rand(0., 1.)
+                if x < np.exp(ln_r):
+                    reject = False
+            if not reject:
+                # adopt new point
+                theta = theta_new
+                blob = blob_new
+                post = lnpost_new
+                n_accept[i] = 1
     return post, theta, blob, n_accept
