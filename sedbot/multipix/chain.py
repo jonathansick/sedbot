@@ -135,6 +135,29 @@ class MultiPixelChain(Table):
         obs = self.meta['sed'][ipix, :]
         return model - obs
 
+    def sed_ratios_chain_for_pixel(self, ipix, add_background=True):
+        """Chain of model / observed SED ratios for a single pixel.
+
+        Parameters
+        ----------
+        ipix : int
+            Pixel ID.
+        add_background : bool
+            If ``True`` then the background is added to the modelled SED.
+
+        Returns
+        -------
+        ratios : ndarray
+            A ``(n_sample, n_band)`` numpy array. The order of bandpasses
+            corresponds to ``self.meta['compute_bands']``.
+        """
+        idx = self.meta['band_indices']
+        model = self['model_sed'][:, ipix, idx]
+        if add_background:
+            model += self.background_array * self.meta['area'][ipix]
+        obs = self.meta['sed'][ipix, :]
+        return model / obs
+
     @property
     def background_array(self):
         """A ``(n_sample, n_band)`` ndarray of background samples."""
