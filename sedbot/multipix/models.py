@@ -396,13 +396,16 @@ class ThreeParamSFH(MultiPixelBaseModel):
     pset : dict
         Initialization arguments to :class:`fsps.StellarPopulation`, as a
         dictionary.
+    fixed_bg_bands : list
+        Names of bands where background should be fixed to zero.
     """
     def __init__(self, seds, sed_errs, sed_bands, areas,
                  pixel_metadata=None,
                  theta_priors=None,
                  phi_priors=None,
                  compute_bands=None,
-                 pset=None):
+                 pset=None,
+                 fixed_bg_bands=None):
         super(ThreeParamSFH, self).__init__(pset=pset)
         self._seds = seds
         self._errs = sed_errs
@@ -422,3 +425,9 @@ class ThreeParamSFH(MultiPixelBaseModel):
                               'sf_start', 'logtau', 'const',
                               'dust1', 'dust2']
         self._phi_params = ['d']
+
+        # Set indices of bands where background should always be reset to 0.
+        if fixed_bg_bands:
+            for band in fixed_bg_bands:
+                if band in self._obs_bands:
+                    self._fixed_bg[self._obs_bands.index(band)] = 0.
