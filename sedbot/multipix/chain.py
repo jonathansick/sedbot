@@ -52,7 +52,6 @@ class MultiPixelChain(Table):
         single_value_fields = list(self.meta['phi_params']) \
             + ["B_{0}".format(n) for n in self.meta['obs_bands']]
         for i, n in enumerate(colnames):
-            print n
             if n in single_value_fields:
                 # single value for all pixels
                 arr[n] = self[n]
