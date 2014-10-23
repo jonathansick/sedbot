@@ -15,7 +15,7 @@ from astropy.utils.console import ProgressBar
 from astropy.table import Table, hstack, Column
 
 from sedbot.photconv import mjy_to_luminosity
-from .chain import MultiPixelChain
+from sedbot.chain import MultiPixelChain
 
 
 MODEL = None
