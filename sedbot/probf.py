@@ -33,6 +33,14 @@ class RandomVariable(object):
         super(RandomVariable, self).__init__()
         self._limits = None
 
+    @property
+    def lower_limit(self):
+        return self._limits[0]
+
+    @property
+    def upper_limit(self):
+        return self._limits[1]
+
     def __call__(self, x):
         if not self._limits:
             return self._rv.logpdf(x)
@@ -88,9 +96,17 @@ class LnUniformMass(LnUniform):
         ``fsps.get_filter(band_name).msun_ab``.
     """
     def __init__(self, logml_min, logml_max, sb, D_pc, area, msun):
-        low_mass = sb_to_mass(sb, msun, logml_min, area, D_pc)
-        high_mass = sb_to_mass(sb, msun, logml_max, area, D_pc)
-        super(LnUniformMass, self).__init__(low_mass, high_mass)
+        self._low_mass = sb_to_mass(sb, msun, logml_min, area, D_pc)
+        self._high_mass = sb_to_mass(sb, msun, logml_max, area, D_pc)
+        super(LnUniformMass, self).__init__(self._low_mass, self._high_mass)
+
+    @property
+    def lower_limit(self):
+        return self._low_mass
+
+    @property
+    def upper_limit(self):
+        return self._high_mass
 
 
 class LnNormal(RandomVariable):
