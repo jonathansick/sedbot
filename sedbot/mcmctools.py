@@ -2,6 +2,8 @@
 # encoding: utf-8
 """
 Utilities for setting up an emcee sampler.
+
+.. note:: This module is deprecated by the new singlepix subpackage.
 """
 
 import time
