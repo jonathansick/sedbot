@@ -17,7 +17,15 @@ from sedbot.chain import SinglePixelChain
 
 
 class SinglePixelSampler(object):
-    """Emcee-based sampler for single pixel SEDs."""
+    """Emcee-based sampler for single pixel SEDs.
+
+    Parameters
+    ----------
+    model : object
+        A model instance (see :mod:`sedbot.models`).
+    n_walkers : int
+        Number of emcee walkers.
+    """
     def __init__(self, model, n_walkers=100):
         super(SinglePixelSampler, self).__init__()
         self.model = model
@@ -29,6 +37,14 @@ class SinglePixelSampler(object):
     def generate_initial_point(self, x0, x_sigma):
         """Generate a chain starting point given an array of Gaussian
         dispersions to build balls from for each parameter.
+
+        Parameters
+        ----------
+        x0 : ndarray
+            Initial points in parameter space. Shape ``(n_params,)``.
+        x_sigma : ndarray
+            Gaussian standard deviations to disperse starting points for each
+            walkers. Shape ``(n_params,)``.
         """
         ndim = len(x0)
         assert len(x0) == len(x_sigma), "Lengths do not match"
@@ -68,7 +84,7 @@ class SinglePixelSampler(object):
     @property
     def table(self):
         """An :class:`astropy.table.Table` with the chain."""
-        if self._sampler is None:
+        if self.sampler is None:
             return None
         msuns = np.array([fsps.get_filter(n).msun_ab
                           for n in self.model.computed_bands])
@@ -105,7 +121,11 @@ class SinglePixelSampler(object):
 
         chain_table = Table(flatchain, meta=meta)
         blob_table = Table(blobchain)
-        tbl = SinglePixelChain(hstack(chain_table, blob_table))
+        print chain_table
+        print blob_table
+        tbl = SinglePixelChain(hstack((chain_table, blob_table),
+                                      join_type='exact'))
+        print tbl
 
         # Add M/L computations for each computed band.
         for i, (band_name, msun) in enumerate(zip(self.model.computed_bands,

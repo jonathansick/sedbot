@@ -51,7 +51,7 @@ class ThreeParamSFHFixedD(object):
         self._area = area
         self.pixel_metadata = pixel_metadata
         self._obs_bands = sed_bands
-        self._d = d
+        self.d = d
         self._priors = priors
         if compute_bands is None:
             self._compute_bands = self._obs_bands
@@ -140,7 +140,7 @@ class ThreeParamSFHFixedD(object):
         self.sp.params['zmet'] = zmet1
         f1 = abs_ab_mag_to_mjy(
             self.sp.get_mags(tage=13.8, bands=self._compute_bands),
-            self._d)
+            self.d)
         meta1[0] = self.sp.stellar_mass
         meta1[1] = self.sp.dust_mass
         meta1[2] = self.sp.log_lbol
@@ -150,7 +150,7 @@ class ThreeParamSFHFixedD(object):
         self.sp.params['zmet'] = zmet2
         f2 = abs_ab_mag_to_mjy(
             self.sp.get_mags(tage=13.8, bands=self._compute_bands),
-            self._d)
+            self.d)
         meta2[0] = self.sp.stellar_mass
         meta2[1] = self.sp.dust_mass
         meta2[2] = self.sp.log_lbol
