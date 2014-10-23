@@ -13,6 +13,7 @@ import fsps
 from astropy.table import Table, hstack, Column
 
 from sedbot.photconv import mjy_to_luminosity
+from sedbot.chain import SinglePixelChain
 
 
 class SinglePixelSampler(object):
@@ -104,8 +105,7 @@ class SinglePixelSampler(object):
 
         chain_table = Table(flatchain, meta=meta)
         blob_table = Table(blobchain)
-        # FIXME cast to a SinglePixelChain
-        tbl = Table(hstack(chain_table, blob_table))
+        tbl = SinglePixelChain(hstack(chain_table, blob_table))
 
         # Add M/L computations for each computed band.
         for i, (band_name, msun) in enumerate(zip(self.model.computed_bands,
