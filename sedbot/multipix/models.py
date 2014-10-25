@@ -286,9 +286,15 @@ class MultiPixelBaseModel(object):
         for i in xrange(self.n_bands):
             obs_var = (self._errs[:, i] / A) ** 2.
             g = np.where(np.isfinite(self._seds[:, i]))[0]
-            mean[i] = np.average(((self._seds[:, i] - model[:, i]) / A)[g],
+            residuals = ((self._seds[:, i] - model[:, i]) / A)[g]
+            mean[i] = np.average(residuals,
                                  weights=1. / obs_var[g])
-            variance[i] = 1. / np.sum(1. / obs_var[g])
+            # FIXME Establish the variance of the sampled Gaussian from
+            # error propagation, or from the sample variance of residuals???
+            # variance[i] = 1. / np.sum(1. / obs_var[g])
+            q25, q75 = np.percentile(residuals, [0.25, 0.75])
+            # sigma of mean = sample sigma / sqrt(N)
+            variance[i] = (0.7413 * (q75 - q25)) ** 2. / residuals.shape[0]
         B_new = np.sqrt(variance) * np.random.randn(self.n_bands) + mean
 
         # reset B for any images with fixed background
