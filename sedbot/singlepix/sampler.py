@@ -99,6 +99,7 @@ class SinglePixelSampler(object):
             ('sed_err', self.model._err),
             ('pixels', self.model.pixel_metadata),
             ('area', self.model._area),
+            ('n_walkers', self.n_walkers),
             ("f_accept", self.sampler.acceptance_fraction),
             ("acor", self.sampler.acor)))
 

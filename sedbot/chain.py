@@ -109,7 +109,7 @@ class MultiPixelChain(Table):
         meta = {}
         # Copy scalar constant quantites for all pixels
         copy_keys = ['d', 'obs_bands', 'compute_bands', 'msun_ab',
-                     'band_indices', 'theta_params']
+                     'band_indices', 'theta_params', 'n_walkers']
         for k in copy_keys:
             meta[k] = tables[0].meta[k]
         # Array metadata
