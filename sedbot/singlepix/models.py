@@ -111,16 +111,28 @@ class ThreeParamSFHFixedD(object):
               ('logLbol', np.float),
               ('logSFR', np.float),
               ('logAge', np.float),
-              ('model_sed', np.float, self.n_computed_bands)]
+              ('model_sed', np.float, self.n_computed_bands),
+              ('lnpriors', np.float, self.n_params)]
         return np.dtype(dt)
 
     def __call__(self, theta):
         """Posterior likelihood call."""
         # Evaluate prior
-        lnprior = np.sum(np.array([self._priors[n](v)
-                                   for n, v in zip(self._param_names, theta)]))
+        lnpriors = np.array([self._priors[n](v)
+                             for n, v in zip(self._param_names, theta)])
+        lnprior = np.sum(lnpriors)
         if ~np.isfinite(lnprior):
-            return -np.inf, None
+            model_mjy = np.empty(self.n_computed_bands, np.float)
+            model_mjy.fill(np.nan)
+            blob = {"lnpost": -np.inf,
+                    "logMstar": np.nan,
+                    "logMdust": np.nan,
+                    "logLbol": np.nan,
+                    "logSFR": np.nan,
+                    "logAge": np.nan,
+                    "model_sed": model_mjy,
+                    "lnpriors": lnpriors}
+            return -np.inf, blob
 
         meta1 = np.empty(5, dtype=float)
         meta2 = np.empty(5, dtype=float)
@@ -179,6 +191,7 @@ class ThreeParamSFHFixedD(object):
                 "logLbol": logm * meta[2],  # log solar luminosities
                 "logSFR": logm * meta[3],  # star formation rate, M_sun / yr
                 "logAge": meta[4],
-                "model_sed": model_mjy}
+                "model_sed": model_mjy,
+                "lnpriors": lnpriors}
 
         return lnpost, blob

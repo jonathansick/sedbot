@@ -118,15 +118,12 @@ class SinglePixelSampler(object):
         for i in xrange(nsteps):
             for j in xrange(nwalkers):
                 for k in self.model.blob_dtype.names:
-                    blobchain[k][i * j] = blobs[i][j][k]
+                    blobchain[k][i * self.n_walkers + j] = blobs[i][j][k]
 
         chain_table = Table(flatchain, meta=meta)
         blob_table = Table(blobchain)
-        print chain_table
-        print blob_table
         tbl = SinglePixelChain(hstack((chain_table, blob_table),
                                       join_type='exact'))
-        print tbl
 
         # Add M/L computations for each computed band.
         for i, (band_name, msun) in enumerate(zip(self.model.computed_bands,
