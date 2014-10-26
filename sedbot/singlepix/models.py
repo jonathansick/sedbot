@@ -166,7 +166,7 @@ class ThreeParamSFHFixedD(object):
         # Compute likelihood
         # Automatically ignores pixels with no measurement (Nan)
         lnL = -0.5 * np.nansum(
-            np.power((model_mjy[self.band_indices] * self._area
+            np.power((model_mjy[self.band_indices]
                       - self._sed) / self._err, 2.))
         lnpost = lnprior + lnL
         if ~np.isfinite(lnpost):
