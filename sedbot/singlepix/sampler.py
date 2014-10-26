@@ -95,6 +95,8 @@ class SinglePixelSampler(object):
             ('d', self.model.d),  # expected distance in parsecs
             ('band_indices', self.model.band_indices),
             ('theta_params', self.model.param_names),
+            ('compute_time', self._run_time),
+            ('step_time', self._call_time),
             ('sed', self.model._sed),
             ('sed_err', self.model._err),
             ('pixels', self.model.pixel_metadata),
