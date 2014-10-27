@@ -505,6 +505,11 @@ class MultiPixelDataset(object):
         """The pixels table, containing information on each pixel."""
         return Table.read(self._filepath, path='pixels')
 
+    @property
+    def estimates(self):
+        """The estimates table, containing information on each pixel."""
+        return Table.read(self._filepath, path='estimates')
+
     def build_pixels_table(self):
         """Build the ``pixels`` table, which is built from the `'pixels'`
         metadata of individual chains.
@@ -539,5 +544,34 @@ class MultiPixelDataset(object):
         pixel_table.write(self._filepath, path="pixels", format="hdf5",
                           append=True, overwrite=True)
 
-    def build_estimates_table(self):
-        pass
+    def build_estimates_table(self, burn=0):
+        """Estimate the [q25, q50, q75] for all parameters in the chain.
+
+        Table has columns with parameter names. Len n_pixels. Shape (3,) for
+        q25, q50, q75.
+        """
+        with h5py.File(self._filepath, 'r+') as f:
+            if 'estimates' in f:
+                del f['estimates']
+            pixel_ids = [int(k) for k in f['chains'].keys()]
+        chain0 = self.read_chain(0)
+        n_bands = len(chain0.meta['compute_bands'])
+        param_names = chain0.colnames
+        if 'model_sed' in param_names:
+            param_names.remove('model_sed')
+        dt = [(n, np.float, 3) for n in param_names + ['logMstarMdust']]
+        dt += [('model_sed', np.float, (3, n_bands))]
+        data = np.empty(len(pixel_ids), dtype=np.dtype(dt))
+        for pix_id in pixel_ids:
+            chain = self.read_chain(pix_id)[burn:]
+            for param in param_names:
+                q25_50_75 = np.percentile(chain[param], [0.25, 0.5, 0.75])
+                data[param][pix_id] = q25_50_75
+            # Also compute star-to-dust mass ratio
+            star_dust = chain['logMstar'] - chain['logMdust']
+            q25_50_75 = np.percentile(star_dust, [0.25, 0.5, 0.75])
+            data['logMstarMdust'][pix_id] = q25_50_75
+
+        tbl = Table(data)
+        tbl.write(self._filepath, path='estimates', format='hdf5',
+                  overwrite=True, append=True)
