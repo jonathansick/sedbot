@@ -7,7 +7,8 @@ Data structure and persistence for emcee chains with HDF5.
 import os
 
 import numpy as np
-from astropy.table import Table, vstack
+from astropy.table import Table, vstack, hstack
+import h5py
 
 
 class SinglePixelChain(Table):
@@ -469,3 +470,74 @@ def make_flatchain(sampler, param_names, bands, metadata=None,
     for n in tbl.keys():
         tbl[n][bad] = np.nan
     return tbl
+
+
+class MultiPixelDataset(object):
+    """Representation of multiple SinglePixelChains in a multi-table HDF5
+    file, as well as parameter estimate tables.
+
+    This class is better suited to handling large ensembles than joining
+    SinglePixelChains in a MultiPixelChain.
+    """
+    def __init__(self, hdf5_path):
+        super(MultiPixelDataset, self).__init__()
+        self._filepath = hdf5_path
+
+    @classmethod
+    def build_dataset(cls, hdf5_path, chains):
+        for i, chain in enumerate(chains):
+            chain_path = "chains/{0:d}".format(i)
+            chain.write(hdf5_path, format='hdf5', path=chain_path,
+                        append=True, overwrite=True)
+        instance = cls(hdf5_path)
+        instance.build_pixels_table()
+        return instance
+
+    def read_chain(self, pixel_id):
+        """Read an individual :class:`SinglePixelChain`."""
+        pixel_id = int(pixel_id)
+        tbl = SinglePixelChain.read(self._filepath,
+                                    path="chains/{0:d}".format(pixel_id))
+        return tbl
+
+    @property
+    def pixels(self):
+        """The pixels table, containing information on each pixel."""
+        return Table.read(self._filepath, path='pixels')
+
+    def build_pixels_table(self):
+        """Build the ``pixels`` table, which is built from the `'pixels'`
+        metadata of individual chains.
+        """
+        with h5py.File(self._filepath, 'r+') as f:
+            if 'pixels' in f:
+                del f['pixels']
+            pixel_ids = [int(k) for k in f['chains'].keys()]
+        pixel_ids.sort()
+
+        pixel_rows = []
+        chain0 = self.read_chain(0)
+        n_pixels = len(pixel_ids)
+        n_bands = len(chain0.meta['sed'])
+        sed_data = np.empty(
+            n_pixels,
+            dtype=np.dtype([('sed', np.float, n_bands),
+                            ('sed_err', np.float, n_bands)]))
+        sed_data.fill(np.nan)
+        for pixel_id in pixel_ids:
+            chain = self.read_chain(pixel_id)
+            pixel_rows.append(chain.meta['pixels'])
+            obs_bands = chain.meta['obs_bands']
+            sed_data['sed'][pixel_id] = chain.meta['sed']
+            sed_data['sed_err'][pixel_id] = chain.meta['sed_err']
+        pixel_rows = tuple(pixel_rows)
+        pixel_data = np.concatenate(pixel_rows)
+        meta = {"obs_bands": obs_bands}
+        pixel_table = Table(pixel_data, meta=meta)
+        sed_table = Table(sed_data)
+        pixel_table = hstack([pixel_table, sed_table], join_type='exact')
+        pixel_table.write(self._filepath, path="pixels", format="hdf5",
+                          append=True, overwrite=True)
+
+    def build_estimates_table(self):
+        pass
