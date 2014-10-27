@@ -91,19 +91,24 @@ class MultiPixelChain(Table):
         chain_colnames = tables[0].colnames
         n_chains = len(tables)
         n_sed_bands = len(tables[0].meta['compute_bands'])
+        n_params = len(tables[0].meta['theta_params'])
+        n_steps = len(tables[0])
 
         # Copy chain data
         dt = [(n, np.float, n_chains) for n in chain_colnames
-              if n is not 'sed_model'] \
-            + [('sed_model', np.float, n_sed_bands)]
-        data = np.empty(dt, dtype=np.dtype(dt))
+              if n not in ['model_sed', 'lnpriors']] \
+            + [('model_sed', np.float, (n_chains, n_sed_bands))] \
+            + [('lnpriors', np.float, (n_chains, n_params))]
+        data = np.empty(n_steps, dtype=np.dtype(dt))
         data.fill(np.nan)
         for i, tbl in enumerate(tables):
             for colname in chain_colnames:
-                if colname == 'sed_model':
-                    data['sed_model'][i, :, :] = tbl['sed_model']
+                if colname == 'model_sed':
+                    data['model_sed'][:, i, :] = tbl['model_sed']
+                elif colname == 'lnpriors':
+                    data['lnpriors'][:, i, :] = tbl['lnpriors']
                 else:
-                    data[colname][i][:] = tbl[colname][:]
+                    data[colname][:, i] = tbl[colname]
 
         # Copy metadata
         meta = {}
