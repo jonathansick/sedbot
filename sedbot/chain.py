@@ -484,13 +484,14 @@ class MultiPixelDataset(object):
         self._filepath = hdf5_path
 
     @classmethod
-    def build_dataset(cls, hdf5_path, chains):
+    def build_dataset(cls, hdf5_path, chains, burn=0):
         for i, chain in enumerate(chains):
             chain_path = "chains/{0:d}".format(i)
             chain.write(hdf5_path, format='hdf5', path=chain_path,
                         append=True, overwrite=True)
         instance = cls(hdf5_path)
         instance.build_pixels_table()
+        instance.build_estimates_table(burn=burn)
         return instance
 
     def read_chain(self, pixel_id):
@@ -554,6 +555,8 @@ class MultiPixelDataset(object):
             if 'estimates' in f:
                 del f['estimates']
             pixel_ids = [int(k) for k in f['chains'].keys()]
+        pixel_ids.sort()
+
         chain0 = self.read_chain(0)
         n_bands = len(chain0.meta['compute_bands'])
         param_names = chain0.colnames
@@ -565,13 +568,19 @@ class MultiPixelDataset(object):
         for pix_id in pixel_ids:
             chain = self.read_chain(pix_id)[burn:]
             for param in param_names:
-                q25_50_75 = np.percentile(chain[param], [0.25, 0.5, 0.75])
+                q25_50_75 = np.percentile(chain[param], [25, 50, 75])
                 data[param][pix_id] = q25_50_75
+            # Parameter Estimates for model SEDs
+            for i in xrange(n_bands):
+                q25_50_75 = np.percentile(chain['model_sed'][:, i],
+                                          [25, 50, 75])
+                print q25_50_75
+                data['model_sed'][pix_id, :, i] = q25_50_75
             # Also compute star-to-dust mass ratio
             star_dust = chain['logMstar'] - chain['logMdust']
-            q25_50_75 = np.percentile(star_dust, [0.25, 0.5, 0.75])
+            q25_50_75 = np.percentile(star_dust, [25, 50, 75])
             data['logMstarMdust'][pix_id] = q25_50_75
 
-        tbl = Table(data)
+        tbl = Table(data, meta={"compute_bands": chain0.meta['compute_bands']})
         tbl.write(self._filepath, path='estimates', format='hdf5',
                   overwrite=True, append=True)
