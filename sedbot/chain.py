@@ -484,7 +484,8 @@ class MultiPixelDataset(object):
         self._filepath = hdf5_path
 
     @classmethod
-    def build_dataset(cls, hdf5_path, chains, burn=0):
+    def build_dataset_from_chains(cls, hdf5_path, chains, burn=0):
+        """Build a dataset from a list of in-memory SinglePixelChain tables."""
         for i, chain in enumerate(chains):
             chain_path = "chains/{0:d}".format(i)
             chain.write(hdf5_path, format='hdf5', path=chain_path,
@@ -493,6 +494,12 @@ class MultiPixelDataset(object):
         instance.build_pixels_table()
         instance.build_estimates_table(burn=burn)
         return instance
+
+    def add_chain_from_file(self, chain_path, pixel_id):
+        chain = SinglePixelChain.read(chain_path, path='chain')
+        hdf_path = "chains/{0:d}".format(pixel_id)
+        chain.write(self._filepath, format='hdf5', path=hdf_path,
+                    append=True, overwrite=True)
 
     def read_chain(self, pixel_id):
         """Read an individual :class:`SinglePixelChain`."""
