@@ -16,7 +16,7 @@ class SinglePixelChain(Table):
     def __add__(self, other_table):
         """Concatenate tables.
 
-        >>> tbl = tbl1 + tbl2
+        e.g. tbl = tbl1 + tbl2
 
         Note this is a left-add, so `tbl1` in the example gets called.
         """
@@ -132,7 +132,7 @@ class MultiPixelChain(Table):
     def __add__(self, other_table):
         """Concatenate tables.
 
-        >>> tbl = tbl1 + tbl2
+        e.g. tbl = tbl1 + tbl2
 
         Note this is a left-add, so `tbl1` in the example gets called.
         """
@@ -518,7 +518,7 @@ class MultiPixelDataset(object):
         """The estimates table, containing information on each pixel."""
         return Table.read(self._filepath, path='estimates')
 
-    def build_pixels_table(self):
+    def build_pixels_table(self, n_pixels=None):
         """Build the ``pixels`` table, which is built from the `'pixels'`
         metadata of individual chains.
         """
@@ -528,23 +528,31 @@ class MultiPixelDataset(object):
             pixel_ids = [int(k) for k in f['chains'].keys()]
         pixel_ids.sort()
 
-        pixel_rows = []
+        if n_pixels is None:
+            n_pixels = len(pixel_ids)
+        assert n_pixels > max(pixel_ids)
+
+        # Get schema for the pixel metadata
         chain0 = self.read_chain(0)
-        n_pixels = len(pixel_ids)
         n_bands = len(chain0.meta['sed'])
+        obs_bands = chain0.meta['obs_bands']
+
+        pixels_dtype = chain0.meta['pixels'].dtype
+        pixel_data = np.empty(n_pixels, dtype=pixels_dtype)
+        pixel_data.fill(np.nan)
+
         sed_data = np.empty(
             n_pixels,
             dtype=np.dtype([('sed', np.float, n_bands),
                             ('sed_err', np.float, n_bands)]))
         sed_data.fill(np.nan)
+
         for pixel_id in pixel_ids:
             chain = self.read_chain(pixel_id)
-            pixel_rows.append(chain.meta['pixels'])
-            obs_bands = chain.meta['obs_bands']
+            for colname in pixels_dtype.names:
+                pixel_data[colname][pixel_id] = chain.meta['pixels'][colname]
             sed_data['sed'][pixel_id] = chain.meta['sed']
             sed_data['sed_err'][pixel_id] = chain.meta['sed_err']
-        pixel_rows = tuple(pixel_rows)
-        pixel_data = np.concatenate(pixel_rows)
         meta = {"obs_bands": obs_bands}
         pixel_table = Table(pixel_data, meta=meta)
         sed_table = Table(sed_data)
