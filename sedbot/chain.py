@@ -485,7 +485,11 @@ class MultiPixelDataset(object):
 
     @classmethod
     def build_dataset_from_chains(cls, hdf5_path, chains, burn=0):
-        """Build a dataset from a list of in-memory SinglePixelChain tables."""
+        """Build a dataset from a list of in-memory SinglePixelChain tables.
+
+        This assumes that the list of pixels/chains is complete (the pixel
+        ID corrresponds to the index of the pixel in the `chains` list).
+        """
         for i, chain in enumerate(chains):
             chain_path = "chains/{0:d}".format(i)
             chain.write(hdf5_path, format='hdf5', path=chain_path,
@@ -560,7 +564,7 @@ class MultiPixelDataset(object):
         pixel_table.write(self._filepath, path="pixels", format="hdf5",
                           append=True, overwrite=True)
 
-    def build_estimates_table(self, burn=0):
+    def build_estimates_table(self, burn=0, n_pixels=None):
         """Estimate the [q25, q50, q75] for all parameters in the chain.
 
         Table has columns with parameter names. Len n_pixels. Shape (3,) for
@@ -572,6 +576,10 @@ class MultiPixelDataset(object):
             pixel_ids = [int(k) for k in f['chains'].keys()]
         pixel_ids.sort()
 
+        if n_pixels is None:
+            n_pixels = len(pixel_ids)
+        assert n_pixels > max(pixel_ids)
+
         chain0 = self.read_chain(0)
         n_bands = len(chain0.meta['compute_bands'])
         param_names = chain0.colnames
@@ -579,7 +587,7 @@ class MultiPixelDataset(object):
             param_names.remove('model_sed')
         dt = [(n, np.float, 3) for n in param_names + ['logMstarMdust']]
         dt += [('model_sed', np.float, (3, n_bands))]
-        data = np.empty(len(pixel_ids), dtype=np.dtype(dt))
+        data = np.empty(n_pixels, dtype=np.dtype(dt))
         for pix_id in pixel_ids:
             chain = self.read_chain(pix_id)[burn:]
             for param in param_names:
@@ -589,7 +597,6 @@ class MultiPixelDataset(object):
             for i in xrange(n_bands):
                 q25_50_75 = np.percentile(chain['model_sed'][:, i],
                                           [25, 50, 75])
-                print q25_50_75
                 data['model_sed'][pix_id, :, i] = q25_50_75
             # Also compute star-to-dust mass ratio
             star_dust = chain['logMstar'] - chain['logMdust']
