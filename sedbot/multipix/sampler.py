@@ -207,7 +207,7 @@ class MultiPixelGibbsBgSampler(object):
                 elif ln_r >= 0.:
                     reject = False
                 else:
-                    x = np.random.rand(0., 1.)
+                    x = np.random.random_sample()
                     if x < np.exp(ln_r):
                         reject = False
                 if not reject:
@@ -404,15 +404,21 @@ def pixel_mh_sampler(args):
             lnpost_new, blob_new = MODEL.sample_pixel(theta_new,
                                                       phi0, B0, ipix)
             ln_r = lnpost_new - post
+            # print "pix {0:d} param {1:d} ln_r {2:.2f}".format(ipix, i, ln_r),
             reject = True
             if ~np.isfinite(ln_r):
+                # print " reject ln_r not finite"
                 pass
             elif ln_r >= 0.:
+                # print " accepted".format(ipix, i)
                 reject = False
             else:
-                x = np.random.rand(0., 1.)
+                x = np.random.random_sample()
                 if x < np.exp(ln_r):
+                    # print " accept {0:.2f} < r".format(x)
                     reject = False
+                # else:
+                    # print " reject {0:.2f} > r".format(x)
             if not reject:
                 # adopt new point
                 theta = theta_new
