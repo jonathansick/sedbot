@@ -237,7 +237,7 @@ class MultiPixelBaseModel(object):
             lnp += self._phi_priors[name](phi[i])
         return lnp
 
-    def update_background(self, theta, phi, model_seds):
+    def update_background(self, theta, phi, model_seds, sample_errors=False):
         """Recompute the scalar background from a Normal distribution
         of model observation residuals.
 
@@ -256,6 +256,8 @@ class MultiPixelBaseModel(object):
             A ``(npix, nbands)`` array of model SEDs from the blob data
             of the previous step. This lets us skip the task of recomputing
             SEDs before estimating a new background.
+        sample_errors : bool
+            Use sample errors rather than statistical errors
 
         Returns
         -------
@@ -289,12 +291,14 @@ class MultiPixelBaseModel(object):
             residuals = ((self._seds[:, i] - model[:, i]) / A)[g]
             mean[i] = np.average(residuals,
                                  weights=1. / obs_var[g])
-            # FIXME Establish the variance of the sampled Gaussian from
+            # Establish the variance of the sampled Gaussian from
             # error propagation, or from the sample variance of residuals???
-            # variance[i] = 1. / np.sum(1. / obs_var[g])
-            q25, q75 = np.percentile(residuals, [0.25, 0.75])
-            # sigma of mean = sample sigma / sqrt(N)
-            variance[i] = (0.7413 * (q75 - q25)) ** 2. / residuals.shape[0]
+            if sample_errors:
+                q25, q75 = np.percentile(residuals, [25, 75])
+                # sigma of mean = sample sigma / sqrt(N)
+                variance[i] = (0.7413 * (q75 - q25)) ** 2. / residuals.shape[0]
+            else:
+                variance[i] = 1. / np.sum(1. / obs_var[g])
         B_new = np.sqrt(variance) * np.random.randn(self.n_bands) + mean
 
         # reset B for any images with fixed background

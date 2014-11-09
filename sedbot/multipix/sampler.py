@@ -65,7 +65,8 @@ class MultiPixelGibbsBgSampler(object):
                theta0=None,
                phi0=None,
                B0=None,
-               chain=None):
+               chain=None,
+               use_bkg_sample_errors=False):
         """Sample for `n_iter` Gibbs steps.
 
         Parameters
@@ -96,6 +97,8 @@ class MultiPixelGibbsBgSampler(object):
             A previously-built chain, whose last sample will be used
             as the starting points for this sampling (in liue of setting
             `theta0`, `phi0` and `B0` manually).
+        use_bkg_sample_errors : bool
+            Use sample standard deviation when updating the background.
         """
         global MODEL
 
@@ -153,9 +156,11 @@ class MultiPixelGibbsBgSampler(object):
                 # Update the background
                 model_seds = self.blobs[i]['model_sed']
                 B_new, global_lnp, pixel_lnp, pixel_blobs \
-                    = self._model.update_background(self.theta[i, :, :],
-                                                    self.phi[i - 1, :],
-                                                    model_seds)
+                    = self._model.update_background(
+                        self.theta[i, :, :],
+                        self.phi[i - 1, :],
+                        model_seds,
+                        sample_errors=use_bkg_sample_errors)
                 self.B[i, :] = B_new
 
                 # Sample the global parameters
