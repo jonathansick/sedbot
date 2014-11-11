@@ -271,16 +271,6 @@ class MultiPixelBaseModel(object):
         # Reduce the model SEDs to just the observed bands
         model = model_seds[:, self.band_indices]
 
-        # Sample new values of B (for each bandpass) from a normal dist.
-        # All quantities are scaled to be per-area since pixels can
-        # have different areas.
-        # A = np.atleast_2d(self._areas).T
-        # obs_var = (self._errs / A) ** 2.
-        # mean = np.average(((self._seds - model) / A)[self._finite_seds],
-        #                   weights=1. / obs_var,
-        #                   axis=0)
-        # variance = 1. / np.sum(1. / obs_var, axis=0)
-
         mean = np.empty(self.n_bands, dtype=np.float)
         variance = np.empty(self.n_bands, dtype=np.float)
         A = self._areas
@@ -406,8 +396,8 @@ class ThreeParamSFH(MultiPixelBaseModel):
     pset : dict
         Initialization arguments to :class:`fsps.StellarPopulation`, as a
         dictionary.
-    fixed_bg_bands : list
-        Names of bands where background should be fixed to zero.
+    fixed_bg : dict
+        Dictionary of bandpass name: background level.
     """
     def __init__(self, seds, sed_errs, sed_bands, areas,
                  pixel_metadata=None,
@@ -415,7 +405,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
                  phi_priors=None,
                  compute_bands=None,
                  pset=None,
-                 fixed_bg_bands=None):
+                 fixed_bg=None):
         super(ThreeParamSFH, self).__init__(pset=pset)
         self._seds = seds
         self._errs = sed_errs
@@ -437,7 +427,8 @@ class ThreeParamSFH(MultiPixelBaseModel):
         self._phi_params = ['d']
 
         # Set indices of bands where background should always be reset to 0.
-        if fixed_bg_bands:
-            for band in fixed_bg_bands:
-                if band in self._obs_bands:
-                    self._fixed_bg[self._obs_bands.index(band)] = 0.
+        if fixed_bg is not None:
+            self._fixed_bg = {}
+            for band, level in fixed_bg.iteritems():
+                index = self._obs_bands.index(band)
+                self._fixed_bg[index] = level
