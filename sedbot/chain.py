@@ -499,6 +499,14 @@ class MultiPixelDataset(object):
         instance.build_estimates_table(burn=burn)
         return instance
 
+    @property
+    def pixel_ids(self):
+        """List of pixel IDs contained in this dataset."""
+        with h5py.File(self._filepath, 'r+') as f:
+            pixel_ids = [int(k) for k in f['chains'].keys()]
+        pixel_ids.sort()
+        return pixel_ids
+
     def add_chain_from_file(self, chain_path, pixel_id):
         chain = SinglePixelChain.read(chain_path, path='chain')
         hdf_path = "chains/{0:d}".format(pixel_id)
