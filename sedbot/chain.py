@@ -502,9 +502,13 @@ class MultiPixelDataset(object):
     @property
     def pixel_ids(self):
         """List of pixel IDs contained in this dataset."""
-        with h5py.File(self._filepath, 'r+') as f:
-            pixel_ids = [int(k) for k in f['chains'].keys()]
-        pixel_ids.sort()
+        try:
+            with h5py.File(self._filepath, 'r+') as f:
+                pixel_ids = [int(k) for k in f['chains'].keys()]
+            pixel_ids.sort()
+        except IOError:
+            # File does not exist
+            pixel_ids = []
         return pixel_ids
 
     def add_chain_from_file(self, chain_path, pixel_id):
@@ -541,7 +545,8 @@ class MultiPixelDataset(object):
         pixel_ids.sort()
 
         if n_pixels is None:
-            n_pixels = len(pixel_ids)
+            # Hack to ensure pixel grid is at least big enough
+            n_pixels = max(pixel_ids) + 1
         assert n_pixels > max(pixel_ids)
 
         # Get schema for the pixel metadata
@@ -585,7 +590,8 @@ class MultiPixelDataset(object):
         pixel_ids.sort()
 
         if n_pixels is None:
-            n_pixels = len(pixel_ids)
+            # Hack to ensure pixel grid is at least big enough
+            n_pixels = max(pixel_ids) + 1
         assert n_pixels > max(pixel_ids)
 
         chain0 = self.read_chain(0)
