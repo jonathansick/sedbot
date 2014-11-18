@@ -57,9 +57,11 @@ def triangle_plot(path, flatchain, param_names, limits=None,
     fig = triangle.corner(samples, labels=_labels, extents=limits,
                           truths=truths,
                           truth_color="#4682b4", scale_hist=False,
-                          quantiles=[],
+                          quantiles=[0.25, 0.5, 0.75],
                           verbose=True, plot_contours=True,
                           plot_datapoints=True,
+                          bins=30,
+                          show_titles=True,
                           fig=None)
     fig.savefig(path)
     mpl.pyplot.close(fig)
