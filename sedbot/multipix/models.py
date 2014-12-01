@@ -405,7 +405,8 @@ class ThreeParamSFH(MultiPixelBaseModel):
         Initialization arguments to :class:`fsps.StellarPopulation`, as a
         dictionary.
     fixed_bg : dict
-        Dictionary of bandpass name: background level.
+        Dictionary of ``(instrument, bandpass name): background level``.
+        e.g. ``{('megacam', 'megacam_i'): 0.0}``
     """
     def __init__(self, seds, sed_errs, sed_bands, instruments, areas,
                  pixel_metadata=None,
@@ -436,9 +437,10 @@ class ThreeParamSFH(MultiPixelBaseModel):
         self._phi_params = ['d']
 
         # Set indices of bands where background should always be reset to 0.
-        # FIXME need to search for indices with both instrument and band.
         if fixed_bg is not None:
             self._fixed_bg = {}
-            for band, level in fixed_bg.iteritems():
-                index = self._obs_bands.index(band)
-                self._fixed_bg[index] = level
+            for (instr, b), level in fixed_bg.iteritems():
+                for i, (instrument, band) in enumerate(zip(instruments,
+                                                           sed_bands)):
+                    if (instr == instrument) and (b == band):
+                        self._fixed_bg[i] = level
