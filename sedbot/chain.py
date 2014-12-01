@@ -173,7 +173,9 @@ class MultiPixelChain(Table):
         dtype = [(n, np.float) for n in colnames]
         arr = np.empty(len(self), dtype=np.dtype(dtype))
         single_value_fields = list(self.meta['phi_params']) \
-            + ["B_{0}".format(n) for n in self.meta['observed_bands']]
+            + ["B__{0}__{1}".format(n, b)
+               for n, b in zip(self.meta['instruments'],
+                               self.meta['observed_bands'])]
         for i, n in enumerate(colnames):
             if n in single_value_fields:
                 # single value for all pixels

@@ -335,8 +335,9 @@ class MultiPixelGibbsBgSampler(object):
                             names=self._model.theta_params,
                             meta=meta)
         phi_table = Table(self.phi, names=self._model.phi_params)
-        background_names = ["B_{0}".format(n)
-                            for n in self._model.observed_bands]
+        background_names = ["B__{0}__{1}".format(n, b)
+                            for n, b in zip(self._model.instruments,
+                                            self._model.observed_bands)]
         B_table = Table(self.B, names=background_names)
         blob_table = Table(self.blobs)
         tbl = MultiPixelChain(hstack((theta_table,
