@@ -45,6 +45,7 @@ class MultiPixelBaseModel(object):
 
         # Band names in the SED
         self._obs_bands = []
+        self._instruments = []
         self._compute_bands = []
 
         # Prior function dictionaries
@@ -79,6 +80,11 @@ class MultiPixelBaseModel(object):
     def observed_bands(self):
         """Names of bandpasses in the *observed* SED."""
         return self._obs_bands
+
+    @property
+    def instruments(self):
+        """Names of instruments in the *observed* SED."""
+        return self._instruments
 
     @property
     def n_pix(self):
@@ -391,6 +397,8 @@ class ThreeParamSFH(MultiPixelBaseModel):
         will be appended to the chain metadata under the `'pixels'` field.
     bands : list
         List of bandpass names corresponding to the ``seds``
+    instruments : list
+        List of instrument names corresponding to the ``seds``
     compute_bands : list
         List of bandpasses to compute and included in the chain metadata.
     pset : dict
@@ -399,7 +407,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
     fixed_bg : dict
         Dictionary of bandpass name: background level.
     """
-    def __init__(self, seds, sed_errs, sed_bands, areas,
+    def __init__(self, seds, sed_errs, sed_bands, instruments, areas,
                  pixel_metadata=None,
                  theta_priors=None,
                  phi_priors=None,
@@ -412,6 +420,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
         self._areas = areas
         self.pixel_metadata = pixel_metadata
         self._obs_bands = sed_bands
+        self._instruments = instruments
         if compute_bands is None:
             self._compute_bands = self._obs_bands
         else:
@@ -427,6 +436,7 @@ class ThreeParamSFH(MultiPixelBaseModel):
         self._phi_params = ['d']
 
         # Set indices of bands where background should always be reset to 0.
+        # FIXME need to search for indices with both instrument and band.
         if fixed_bg is not None:
             self._fixed_bg = {}
             for band, level in fixed_bg.iteritems():

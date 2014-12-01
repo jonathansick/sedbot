@@ -89,8 +89,9 @@ class SinglePixelSampler(object):
         msuns = np.array([fsps.get_filter(n).msun_ab
                           for n in self.model.computed_bands])
         meta = OrderedDict((
-            ('obs_bands', self.model.observed_bands),
-            ('compute_bands', self.model.computed_bands),
+            ('observed_bands', self.model.observed_bands),
+            ('instruments', self.model.instruments),
+            ('computed_bands', self.model.computed_bands),
             ('msun_ab', msuns),
             ('d', self.model.d),  # expected distance in parsecs
             ('band_indices', self.model.band_indices),

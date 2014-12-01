@@ -41,7 +41,7 @@ class SinglePixelChain(Table):
         -------
         residuals : ndarray
             A ``(n_sample, n_band)`` numpy array. The order of bandpasses
-            corresponds to ``self.meta['compute_bands']``.
+            corresponds to ``self.meta['computed_bands']``.
         """
         idx = self.meta['band_indices']
         model = self['model_sed'][:, idx]
@@ -57,7 +57,7 @@ class SinglePixelChain(Table):
         -------
         ratios : ndarray
             A ``(n_sample, n_band)`` numpy array. The order of bandpasses
-            corresponds to ``self.meta['compute_bands']``.
+            corresponds to ``self.meta['computed_bands']``.
         """
         idx = self.meta['band_indices']
         model = self['model_sed'][:, idx]
@@ -89,7 +89,7 @@ class MultiPixelChain(Table):
         """
         chain_colnames = tables[0].colnames
         n_chains = len(tables)
-        n_sed_bands = len(tables[0].meta['compute_bands'])
+        n_sed_bands = len(tables[0].meta['computed_bands'])
         n_params = len(tables[0].meta['theta_params'])
         n_steps = len(tables[0])
 
@@ -112,7 +112,8 @@ class MultiPixelChain(Table):
         # Copy metadata
         meta = {}
         # Copy scalar constant quantites for all pixels
-        copy_keys = ['d', 'obs_bands', 'compute_bands', 'msun_ab',
+        copy_keys = ['d', 'observed_bands', 'instruments',
+                     'computed_bands', 'msun_ab',
                      'band_indices', 'theta_params', 'n_walkers']
         for k in copy_keys:
             meta[k] = tables[0].meta[k]
@@ -172,7 +173,7 @@ class MultiPixelChain(Table):
         dtype = [(n, np.float) for n in colnames]
         arr = np.empty(len(self), dtype=np.dtype(dtype))
         single_value_fields = list(self.meta['phi_params']) \
-            + ["B_{0}".format(n) for n in self.meta['obs_bands']]
+            + ["B_{0}".format(n) for n in self.meta['observed_bands']]
         for i, n in enumerate(colnames):
             if n in single_value_fields:
                 # single value for all pixels
@@ -228,7 +229,7 @@ class MultiPixelChain(Table):
         -------
         chain : ndarray
             A ``(n_sample, n_band)`` numpy array. The order of bandpasses
-            corresponds to ``self.meta['compute_bands']``.
+            corresponds to ``self.meta['computed_bands']``.
         """
         arr = self['model_sed'][:, ipix, :]
         return arr
@@ -248,7 +249,7 @@ class MultiPixelChain(Table):
         -------
         residuals : ndarray
             A ``(n_sample, n_band)`` numpy array. The order of bandpasses
-            corresponds to ``self.meta['compute_bands']``.
+            corresponds to ``self.meta['computed_bands']``.
         """
         idx = self.meta['band_indices']
         model = self['model_sed'][:, ipix, idx]
@@ -272,7 +273,7 @@ class MultiPixelChain(Table):
         -------
         ratios : ndarray
             A ``(n_sample, n_band)`` numpy array. The order of bandpasses
-            corresponds to ``self.meta['compute_bands']``.
+            corresponds to ``self.meta['computed_bands']``.
         """
         idx = self.meta['band_indices']
         model = self['model_sed'][:, ipix, idx]
@@ -284,7 +285,7 @@ class MultiPixelChain(Table):
     @property
     def background_array(self):
         """A ``(n_sample, n_band)`` ndarray of background samples."""
-        fields = ["B_{0}".format(n) for n in self.meta['obs_bands']]
+        fields = ["B_{0}".format(n) for n in self.meta['observed_bands']]
         B = np.empty((len(self), len(fields)), dtype=np.float)
         for i, f in enumerate(fields):
             B[:, i] = self[f]
@@ -371,7 +372,8 @@ class MultiPixelDataset(object):
         # Get schema for the pixel metadata
         chain0 = self.read_chain(0)
         n_bands = len(chain0.meta['sed'])
-        obs_bands = chain0.meta['obs_bands']
+        obs_bands = chain0.meta['observed_bands']
+        instruments = chain0.meta['instruments']
 
         pixels_dtype = chain0.meta['pixels'].dtype
         pixel_data = np.empty(n_pixels, dtype=pixels_dtype)
@@ -389,7 +391,8 @@ class MultiPixelDataset(object):
                 pixel_data[colname][pixel_id] = chain.meta['pixels'][colname]
             sed_data['sed'][pixel_id] = chain.meta['sed']
             sed_data['sed_err'][pixel_id] = chain.meta['sed_err']
-        meta = {"obs_bands": obs_bands}
+        meta = {"observed_bands": obs_bands,
+                "instruments": instruments}
         pixel_table = Table(pixel_data, meta=meta)
         sed_table = Table(sed_data)
         pixel_table = hstack([pixel_table, sed_table], join_type='exact')
@@ -414,7 +417,7 @@ class MultiPixelDataset(object):
         assert n_pixels > max(pixel_ids)
 
         chain0 = self.read_chain(0)
-        n_bands = len(chain0.meta['compute_bands'])
+        n_bands = len(chain0.meta['computed_bands'])
         param_names = chain0.colnames
         if 'model_sed' in param_names:
             param_names.remove('model_sed')
@@ -436,6 +439,7 @@ class MultiPixelDataset(object):
             q25_50_75 = np.percentile(star_dust, [25, 50, 75])
             data['logMstarMdust'][pix_id] = q25_50_75
 
-        tbl = Table(data, meta={"compute_bands": chain0.meta['compute_bands']})
+        meta = {"computed_bands": chain0.meta['computed_bands']}
+        tbl = Table(data, meta=meta)
         tbl.write(self._filepath, path='estimates', format='hdf5',
                   overwrite=True, append=True)

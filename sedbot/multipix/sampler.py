@@ -315,8 +315,9 @@ class MultiPixelGibbsBgSampler(object):
         meta = OrderedDict((
             ('theta_f_accept', theta_f_accept),
             ('phi_f_accept', phi_f_accept),
-            ('obs_bands', self._model.observed_bands),
-            ('compute_bands', self._model.computed_bands),
+            ('observed_bands', self._model.observed_bands),
+            ('instruments', self._model.instruments),
+            ('computed_bands', self._model.computed_bands),
             ('msun_ab', msuns),
             ('band_indices', self._model.band_indices),
             ('theta_params', self._model.theta_params),

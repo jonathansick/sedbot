@@ -31,8 +31,10 @@ class ThreeParamSFHFixedD(object):
         Arbitrary structured array with metadata about the pixels. This
         will be appended to the chain metadata under the `'pixels'` field.
     sed_bands : list
-        List of bandpass names corresponding to the ``seds``
-    compute_bands : list
+        List of bandpass names corresponding to the ``seds``.
+    instruments : list
+        List of instrument names corresponding to the ``seds``.
+    computed_bands : list
         List of bandpasses to compute and included in the chain metadata.
     pset : dict
         Initialization arguments to :class:`fsps.StellarPopulation`, as a
@@ -41,9 +43,9 @@ class ThreeParamSFHFixedD(object):
     _param_names = ('logmass', 'logZZsol', 'sf_start', 'logtau', 'const',
                     'dust1', 'dust2')
 
-    def __init__(self, sed, sed_err, sed_bands, area, d, priors,
+    def __init__(self, sed, sed_err, sed_bands, instruments, area, d, priors,
                  pixel_metadata=None,
-                 compute_bands=None,
+                 computed_bands=None,
                  pset=None):
         super(ThreeParamSFHFixedD, self).__init__()
         self._sed = sed
@@ -51,12 +53,13 @@ class ThreeParamSFHFixedD(object):
         self._area = area
         self.pixel_metadata = pixel_metadata
         self._obs_bands = sed_bands
+        self._instruments = instruments
         self.d = d
         self._priors = priors
-        if compute_bands is None:
+        if computed_bands is None:
             self._compute_bands = self._obs_bands
         else:
-            self._compute_bands = compute_bands
+            self._compute_bands = computed_bands
             # Ensure compute bands is a superset of observed SED
             assert set(self._compute_bands) >= set(self._obs_bands)
         if pset is None:
@@ -79,6 +82,11 @@ class ThreeParamSFHFixedD(object):
     def observed_bands(self):
         """Names of bandpasses in the *observed* SED."""
         return self._obs_bands
+
+    @property
+    def instruments(self):
+        """Names of instruments in the *observed* SED."""
+        return self._instruments
 
     @property
     def n_bands(self):
