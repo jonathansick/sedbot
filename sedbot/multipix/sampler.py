@@ -117,7 +117,7 @@ class MultiPixelGibbsBgSampler(object):
                 phi0[i] = chain[n][-1]
 
             B0 = np.empty(self._model.n_bands, dtype=np.float)
-            for i, (instr, n) in enumerate(zip(self._model.observed_bands,
+            for i, (n, instr) in enumerate(zip(self._model.observed_bands,
                                                self._model.instruments)):
                 name = "B__{0}__{1}".format(instr, n)
                 B0[i] = chain[name][-1]
