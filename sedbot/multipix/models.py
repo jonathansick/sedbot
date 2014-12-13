@@ -199,6 +199,7 @@ class MultiPixelBaseModel(object):
         for ipix in xrange(self.n_pix):
             lnprior = self._pixel_ln_prior(theta[ipix, :], ipix)
             if not np.isfinite(lnprior):
+                print "pixel not finite global", ipix
                 return -np.inf, np.inf, None
             lnpriors.append(lnprior)
 
@@ -422,6 +423,9 @@ class ThreeParamSFH(MultiPixelBaseModel):
         self.pixel_metadata = pixel_metadata
         self._obs_bands = sed_bands
         self._instruments = instruments
+        print "obs bands vs compute_bands"
+        print sed_bands
+        print compute_bands
         if compute_bands is None:
             self._compute_bands = self._obs_bands
         else:
