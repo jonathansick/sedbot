@@ -12,7 +12,7 @@ import emcee
 import fsps
 from astropy.table import Table, hstack, Column
 
-from sedbot.photconv import mjy_to_luminosity
+from sedbot.photconv import micro_jy_to_luminosity
 from sedbot.chain import SinglePixelChain
 
 
@@ -137,7 +137,7 @@ class SinglePixelSampler(object):
                 d = np.array(tbl['d'])
             else:
                 d = self.model.d
-            logLsol = mjy_to_luminosity(tbl['model_sed'][:, i], msun, d)
+            logLsol = micro_jy_to_luminosity(tbl['model_sed'][:, i], msun, d)
             ml = tbl['logMstar'] - logLsol
             colname = "logML_{0}".format(band_name)
             tbl.add_column(Column(name=colname, data=ml))

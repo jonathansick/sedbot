@@ -7,6 +7,9 @@ FSPS generates quantities in magnitudes, while sedbot's likelihood functions
 operate on flux densities in micro Janksies (µJy). FSPS also provides
 spectra in units of solar-luminosity per Hz (:math:`f_\\nu`). This module
 provides utilties for converting between these quantities.
+
+See http://en.wikipedia.org/wiki/Jansky and
+http://en.wikipedia.org/wiki/AB_magnitude for background on these systems.
 """
 
 import numpy as np
@@ -18,7 +21,7 @@ import numpy as np
 MICROJY_ZP = 10. ** 6. * 10. ** 23. * 10. ** (-48.6 / 2.5)
 
 
-def ab_mag_to_mjy(mags, err=None):
+def ab_mag_to_micro_jy(mags, err=None):
     r"""Convert scalar (or array) AB magnitudes to µJy.
 
     That is, we apply the transformation:
@@ -49,7 +52,7 @@ def ab_mag_to_mjy(mags, err=None):
         return mjy
 
 
-def ab_sb_to_mjy(mu, area, err=None):
+def ab_sb_to_micro_jy(mu, area, err=None):
     r"""Convert scalar (or array) AB surface brightness to µJy.
 
     That is, we apply the transformation:
@@ -83,7 +86,7 @@ def ab_sb_to_mjy(mu, area, err=None):
         return mjy
 
 
-def mjy_to_ab_sb(mjy, area, err=None):
+def micro_jy_to_ab_sb(mjy, area, err=None):
     """Convert a flux in µJy to a surface brightness.
 
     Parameters
@@ -112,7 +115,7 @@ def mjy_to_ab_sb(mjy, area, err=None):
         return sb
 
 
-def abs_ab_mag_to_mjy(mags, parsecs):
+def abs_ab_mag_to_micro_jy(mags, parsecs):
     r"""Convert scalar (or array) absolute AB magnitudes to µJy assuming a
     distance in parsecs.
 
@@ -191,7 +194,7 @@ def sb_to_luminosity(sb, msun, A, d):
     return np.log10(A * 10. ** (-0.4 * m))
 
 
-def mjy_to_luminosity(mjy, msun, d):
+def micro_jy_to_luminosity(mjy, msun, d):
     """Convert an SED in µJy to log solar luminosities.
 
     Parameters

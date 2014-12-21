@@ -6,7 +6,7 @@ Utilities for working with models (the astrophysics complement to `mcmctools`).
 
 import numpy as np
 
-from sedbot.photconv import abs_ab_mag_to_mjy
+from sedbot.photconv import abs_ab_mag_to_micro_jy
 from sedbot.zinterp import bracket_logz, interp_logz
 
 
@@ -46,9 +46,9 @@ def mock_dataset(sp, bands, d0, m0, logZZsol, mag_sigma, apply_errors=False):
     """
     zmet1, zmet2 = bracket_logz(logZZsol)
     sp.params['zmet'] = zmet1
-    f1 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
+    f1 = abs_ab_mag_to_micro_jy(sp.get_mags(tage=13.8, bands=bands), d0)
     sp.params['zmet'] = zmet2
-    f2 = abs_ab_mag_to_mjy(sp.get_mags(tage=13.8, bands=bands), d0)
+    f2 = abs_ab_mag_to_micro_jy(sp.get_mags(tage=13.8, bands=bands), d0)
     mock_mjy = m0 * interp_logz(zmet1, zmet2, logZZsol, f1, f2)
     if isinstance(mag_sigma, float):
         mag_sigma = np.ones(len(bands)) * mag_sigma

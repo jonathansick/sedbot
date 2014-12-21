@@ -10,7 +10,7 @@ import numpy as np
 
 import fsps
 
-from sedbot.photconv import abs_ab_mag_to_mjy
+from sedbot.photconv import abs_ab_mag_to_micro_jy
 from sedbot.zinterp import bracket_logz, interp_logz
 
 # Module-level stellar population
@@ -340,7 +340,7 @@ def interp_z_likelihood(args):
     zmet1, zmet2 = bracket_logz(logZZsol)
     # Compute fluxes with low metallicity
     SP.params['zmet'] = zmet1
-    f1 = abs_ab_mag_to_mjy(
+    f1 = abs_ab_mag_to_micro_jy(
         SP.get_mags(tage=13.8, bands=compute_bands),
         phi[0])
     meta1[0] = SP.stellar_mass
@@ -350,7 +350,7 @@ def interp_z_likelihood(args):
     meta1[4] = SP.log_age
     # Compute fluxes with high metallicity
     SP.params['zmet'] = zmet2
-    f2 = abs_ab_mag_to_mjy(
+    f2 = abs_ab_mag_to_micro_jy(
         SP.get_mags(tage=13.8, bands=compute_bands),
         phi[0])
     meta2[0] = SP.stellar_mass

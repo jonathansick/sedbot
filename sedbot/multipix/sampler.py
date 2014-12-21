@@ -14,7 +14,7 @@ import fsps
 from astropy.utils.console import ProgressBar
 from astropy.table import Table, hstack, Column
 
-from sedbot.photconv import mjy_to_luminosity
+from sedbot.photconv import micro_jy_to_luminosity
 from sedbot.chain import MultiPixelChain
 
 
@@ -349,9 +349,9 @@ class MultiPixelGibbsBgSampler(object):
         # Add M/L computations for each computed band.
         for i, (band_name, msun) in enumerate(zip(self._model.computed_bands,
                                                   msuns)):
-            logLsol = mjy_to_luminosity(tbl['model_sed'][:, :, i],
-                                        msun,
-                                        np.atleast_2d(tbl['d']).T)
+            logLsol = micro_jy_to_luminosity(tbl['model_sed'][:, :, i],
+                                             msun,
+                                             np.atleast_2d(tbl['d']).T)
             ml = tbl['logMstar'] - logLsol
             colname = "logML_{0}".format(band_name)
             tbl.add_column(Column(name=colname, data=ml))
