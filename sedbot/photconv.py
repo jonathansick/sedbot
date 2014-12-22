@@ -123,6 +123,33 @@ def micro_jy_to_ab_sb(mjy, area, err=None):
         return sb
 
 
+def micro_jy_to_ab_mag(mjy, err=None):
+    """Convert a flux in µJy to a AB magnitude.
+
+    Parameters
+    ----------
+    mjy : ndarray
+        Flux densities, in micro Janskie (µJy), either a scalar or an
+        ``ndarray``.
+    err : ndarray
+        Optional array of flux density uncertainties (1-sigma).
+
+    Returns
+    -------
+    mjy : ndarray
+        Surface brightness.
+        array.
+    mjy_err : ndarray
+        Surface brightness uncertainty, if ``err`` was specified.
+    """
+    sb = -2.5 * np.log10(mjy / (3631 * 10. ** 6.))
+    if err is not None:
+        sb_err = _flux_err_to_mag_err(err, mjy)
+        return sb, sb_err
+    else:
+        return sb
+
+
 def abs_ab_mag_to_micro_jy(mags, parsecs, err=None):
     r"""Convert scalar (or array) absolute AB magnitudes to µJy assuming a
     distance in parsecs.
