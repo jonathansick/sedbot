@@ -7,7 +7,7 @@ Models for singlepix emcee-based SED MCMC.
 import numpy as np
 import fsps
 
-from sedbot.photconv import abs_ab_mag_to_mjy
+from sedbot.photconv import abs_ab_mag_to_micro_jy
 from sedbot.zinterp import bracket_logz, interp_logz
 
 
@@ -158,7 +158,7 @@ class ThreeParamSFHFixedD(object):
         zmet1, zmet2 = bracket_logz(logZZsol)
         # Compute fluxes with low metallicity
         self.sp.params['zmet'] = zmet1
-        f1 = abs_ab_mag_to_mjy(
+        f1 = abs_ab_mag_to_micro_jy(
             self.sp.get_mags(tage=13.8, bands=self._compute_bands),
             self.d)
         meta1[0] = self.sp.stellar_mass
@@ -168,7 +168,7 @@ class ThreeParamSFHFixedD(object):
         meta1[4] = self.sp.log_age
         # Compute fluxes with high metallicity
         self.sp.params['zmet'] = zmet2
-        f2 = abs_ab_mag_to_mjy(
+        f2 = abs_ab_mag_to_micro_jy(
             self.sp.get_mags(tage=13.8, bands=self._compute_bands),
             self.d)
         meta2[0] = self.sp.stellar_mass
