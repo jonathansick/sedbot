@@ -325,11 +325,11 @@ class MultiPixelDataset(object):
     def pixel_ids(self):
         """List of pixel IDs contained in this dataset."""
         try:
-            with h5py.File(self._filepath, 'r+') as f:
+            with h5py.File(self._filepath, 'a') as f:
                 pixel_ids = [int(k) for k in f['chains'].keys()]
             pixel_ids.sort()
-        except IOError:
-            # File does not exist
+        except KeyError:
+            # chain HDF5 group does not exist
             pixel_ids = []
         return pixel_ids
 
@@ -360,10 +360,12 @@ class MultiPixelDataset(object):
         """Build the ``pixels`` table, which is built from the `'pixels'`
         metadata of individual chains.
         """
-        with h5py.File(self._filepath, 'r+') as f:
+        with h5py.File(self._filepath, 'a') as f:
             if 'pixels' in f:
                 del f['pixels']
-            pixel_ids = [int(k) for k in f['chains'].keys()]
+        pixel_ids = self.pixel_ids
+        if len(pixel_ids) == 0:
+            return
         pixel_ids.sort()
 
         if n_pixels is None:
@@ -407,10 +409,12 @@ class MultiPixelDataset(object):
         Table has columns with parameter names. Len n_pixels. Shape (3,) for
         q25, q50, q75.
         """
-        with h5py.File(self._filepath, 'r+') as f:
+        with h5py.File(self._filepath, 'a') as f:
             if 'estimates' in f:
                 del f['estimates']
-            pixel_ids = [int(k) for k in f['chains'].keys()]
+        pixel_ids = self.pixel_ids
+        if len(pixel_ids) == 0:
+            return
         pixel_ids.sort()
 
         if n_pixels is None:
