@@ -62,6 +62,28 @@ def dn_to_micro_jy(dn, zp, err=None):
         return mjy
 
 
+def micro_jy_to_dn(flux, zp, err=None):
+    """Convert a flux flux in µJy to DN units of an image.
+
+    Parameters
+    ----------
+    flux : array
+        Flux in µJy per pixel.
+    zp : array or scalar
+        Zeropoint for image.
+    err : array
+        Uncertainties in µJy (optional), interpreted as 1-sigma Gaussian
+        uncertainties.
+    """
+    f = 10. ** (-0.4 * (zp + 48.6) + 6. + 23.)
+    dn = flux / f
+    if err is not None:
+        dn_err = err / f
+        return dn, dn_err
+    else:
+        return dn
+
+
 def ab_mag_to_micro_jy(mags, err=None):
     r"""Convert scalar (or array) AB magnitudes to µJy.
 
