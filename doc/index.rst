@@ -1,7 +1,3 @@
-.. image:: ../_static/sedbot_logo.svg
-   :width: 100%
-
-
 The sedbot Documentation
 ========================
 
