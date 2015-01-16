@@ -52,7 +52,7 @@ rst_epilog += """
 # This does not *have* to match the package name, but typically does
 project = u'sedbot'
 author = u'Jonathan Sick'
-copyright = u'2013, ' + author
+copyright = u'2015, ' + author
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

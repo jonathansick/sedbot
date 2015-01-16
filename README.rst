@@ -7,7 +7,7 @@ sedbot is a Python package for modelling galaxy spectral energy distributions (S
 Info
 ----
 
-Copyright 2013 Jonathan Sick, @jonathansick
+Copyright 2015 Jonathan Sick, @jonathansick
 
 BSD Licensed.
 
