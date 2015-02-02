@@ -41,6 +41,18 @@ class LibraryBuilder(object):
                  bands=None,
                  group=None):
         super(LibraryBuilder, self).__init__()
+        self.h5_file = h5_file
+
+        if default_pset is None:
+            self.default_pset = {}
+        else:
+            self.default_pset = dict(default_pset)
+
+        if bands is None:
+            self.bands = []
+        else:
+            self.bands = list(bands)
+
         self.generators = OrderedDict()
 
     def add_parameter(self, param_generator):
@@ -62,7 +74,19 @@ class LibraryBuilder(object):
         n_models : int
             Number of models to generate.
         """
-        pass
+        dt = self._create_parameter_dtype()
+        data = np.empty(n_models, dtype=dt)
+        data.fill(np.nan)
+        i = 0
+        while i < n_models:
+            for name, generator in self.generators.iteritems():
+                data[name][i] = generator.sample()
+            i += 1
+        self.h5_file.create_dataset("params", data=data)
+
+    def _create_parameter_dtype(self):
+        dt = [g.type_def for name, g in self.generators.iteritems()]
+        return np.dtype(dt)
 
 
 class FSPSParamGenerator(object):
@@ -83,19 +107,36 @@ class FSPSParamGenerator(object):
     def sample(self):
         """Build a single sample."""
         pass
+        # while True:
+        #     try:
+        #         x = generator.sample()
+        #     except ValueError:
+        #         # Repeat sampling to get a finite value
+        #         pass
+        #     else:
+        #         break
+
+    @property
+    @abc.abstractmethod
+    def type_def(self):
+        return (self.name, np.float)
 
     def check_value(self, x):
         if x > self.limits.high or x < self.limits.low:
             raise ValueError
 
 
-class UniformParamGenerator(object):
+class UniformParamGenerator(FSPSParamGenerator):
 
-    def __init__(self, pname, low_limit=None, high_limit=None):
-        super(UniformParamGenerator, self).__init__(pname,
+    def __init__(self, name, low_limit=None, high_limit=None):
+        super(UniformParamGenerator, self).__init__(name,
                                                     low_limit=low_limit,
                                                     high_limit=high_limit)
 
     def sample(self):
         # No need to do error checking on this
         return np.random.uniform(self.limits.low, high=self.limits.high)
+
+    @property
+    def type_def(self):
+        return (self.name, np.float)
