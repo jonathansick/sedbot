@@ -82,6 +82,10 @@ class LibraryBuilder(object):
             for name, generator in self.generators.iteritems():
                 data[name][i] = generator.sample()
             i += 1
+
+        # Delete existing
+        if "params" in self.h5_file:
+            del self.h5_file["params"]
         self.h5_file.create_dataset("params", data=data)
 
     def _create_parameter_dtype(self):
@@ -136,6 +140,30 @@ class UniformParamGenerator(FSPSParamGenerator):
     def sample(self):
         # No need to do error checking on this
         return np.random.uniform(self.limits.low, high=self.limits.high)
+
+    @property
+    def type_def(self):
+        return (self.name, np.float)
+
+
+class TauUniformGammaGenerator(FSPSParamGenerator):
+    """Generate a tau (SFR e-folding time) parameter that is uniformly
+    distributed in as 1/tau (gamma).
+
+    Why is this useful? Most Library-based SED works generate libraries
+    uniformly distributed in gamma space, but FSPS operates on tau.
+    """
+
+    def __init__(self, name, low_limit=None, high_limit=None):
+        super(TauUniformGammaGenerator, self).__init__(name,
+                                                       low_limit=low_limit,
+                                                       high_limit=high_limit)
+
+    def sample(self):
+        # This should generate a result within the bounds of tau
+        gamma = np.random.uniform(1. / self.limits.high,
+                                  high=1. / self.limits.low)
+        return 1. / gamma
 
     @property
     def type_def(self):
