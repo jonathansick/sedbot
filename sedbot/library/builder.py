@@ -17,7 +17,9 @@ from collections import namedtuple, OrderedDict
 
 import numpy as np
 
-# from fsps import StellarPopulation
+import fsps
+
+from sedbot.photconv import abs_ab_mag_to_micro_jy, micro_jy_to_luminosity
 
 
 Limits = namedtuple('Limits', ['low', 'high'])
@@ -29,12 +31,11 @@ class LibraryBuilder(object):
     Parameters
     ----------
     h5_file : :class:`h5py.File`
-        File object for an HDF5 file.
+        File object for an HDF5 file. To create an in-memory file, use:
+        `h5py.File('in_memory.hdf5', driver='core', backing_store=False)`.
     group : str
-        (optional) group within the HDF5 table to store the library's tables.
-        If `None` the tables are stored in the HDF5 file's root group.
-    default_pset : dict
-        Default Python-FSPS parameters.
+        (optional) Name of group within the HDF5 table to store the library's
+        tables. If `None` the tables are stored in the HDF5 file's root group.
     """
     def __init__(self, h5_file,
                  default_pset=None,
@@ -66,8 +67,9 @@ class LibraryBuilder(object):
         """
         self.generators[param_generator.name] = param_generator
 
-    def make(self, n_models):
-        """Baseclass for building a stellar population realization library.
+    def define_library(self, n_models):
+        """Define a table of FSPS stellar population parameters to derive
+        a table from given the parameter generators.
 
         Parameters
         ----------
@@ -82,11 +84,90 @@ class LibraryBuilder(object):
             for name, generator in self.generators.iteritems():
                 data[name][i] = generator.sample()
             i += 1
+            # TODO create a mechanism for reviewing all parameters for sanity
+            # checking (i.e., might want all tburst after tstart, etc)
 
-        # Delete existing
+        # Persist the parameter catalog to HDF5; delete existing
         if "params" in self.h5_file:
             del self.h5_file["params"]
         self.h5_file.create_dataset("params", data=data)
+
+    def compute_library_seds(self, bands, age=13.7, default_pset=None):
+        """Compute an SED for each library model instance.
+
+        Model SEDs are stored as absolute fluxes (µJy at d=10pc), normalized
+        to a 1 Solar mass stellar population.
+
+        .. todo:: Support parallel computation.
+
+        Parameters
+        ----------
+        bands : list
+            List of `FSPS bandpass names
+            <http://dan.iel.fm/python-fsps/current/filters/>`_.
+        default_pset : dict
+            Default Python-FSPS parameters.
+        """
+        if default_pset is None:
+            default_pset = {}
+
+        # ALWAYS compute AB mags
+        default_pset['compute_vega_mags'] = False
+
+        # Solar magnitude in each bandpass
+        solar_mags = [fsps.get_filter(n).msun_ab for n in bands]
+
+        # Build the SED table
+        table_names = ['seds', 'mass_light', 'meta']
+        for name in table_names:
+            if name in self.h5_file:
+                del self.h5_file["seds"]
+
+        # Table for SEDs
+        n_models = len(self.h5_file["params"])
+        dtype = np.dtype([(n, np.float) for n in bands])
+        sed_table = self.h5_file.create_dataset("seds",
+                                                (n_models,),
+                                                dtype=dtype)
+
+        # Table for M/L ratios
+        dtype = np.dtype([(n, np.float) for n in bands])
+        ml_table = self.h5_file.create_dataset("mass_light",
+                                               (n_models,),
+                                               dtype=dtype)
+
+        # Table for metadata (stellar mass, dust mass, etc..)
+        meta_cols = ('logMstar', 'logMdust', 'logLbol', 'logSFR', 'logAge')
+        dtype = np.dtype([(n, np.float) for n in meta_cols])
+        meta_table = self.h5_file.create_dataset("meta",
+                                                 (n_models,),
+                                                 dtype=dtype)
+
+        # Iterate on each model
+        # TODO eventually split this work between processors
+        sp_param_names = self.h5_file['params'].dtype.names
+        sp = fsps.StellarPopulation(**default_pset)
+        for i, row in enumerate(self.h5_file["params"]):
+            for n, p in zip(sp_param_names, row):
+                sp.params[n] = float(p)
+            mags = sp.get_mags(tage=age, bands=bands)
+            fluxes = abs_ab_mag_to_micro_jy(mags, 10.)
+
+            # Fill in SED and ML tables
+            for n, msun, flux in zip(bands, solar_mags, fluxes):
+                # interesting slicing syntax for structured array assignment
+                sed_table[n, i] = flux
+
+                logL = micro_jy_to_luminosity(flux, msun, 10.)
+                log_ml = np.log10(sp.stellar_mass) - logL
+                ml_table[n, i] = log_ml
+
+            # Fill in meta data table
+            meta_table['logMstar', i] = np.log10(sp.stellar_mass)
+            meta_table['logMdust', i] = np.log10(sp.dust_mass)
+            meta_table['logLbol', i] = np.log10(sp.log_lbol)
+            meta_table['logSFR', i] = np.log10(sp.sfr)
+            meta_table['logAge', i] = sp.log_age
 
     def _create_parameter_dtype(self):
         dt = [g.type_def for name, g in self.generators.iteritems()]
