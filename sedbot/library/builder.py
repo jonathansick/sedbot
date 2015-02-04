@@ -121,7 +121,7 @@ class LibraryBuilder(object):
         table_names = ['seds', 'mass_light', 'meta']
         for name in table_names:
             if name in self.h5_file:
-                del self.h5_file["seds"]
+                del self.h5_file[name]
 
         # Table for SEDs
         n_models = len(self.h5_file["params"])
