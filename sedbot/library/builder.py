@@ -35,26 +35,22 @@ class LibraryBuilder(object):
         `h5py.File('in_memory.hdf5', driver='core', backing_store=False)`.
     group : str
         (optional) Name of group within the HDF5 table to store the library's
-        tables. If `None` the tables are stored in the HDF5 file's root group.
+        tables. By default tables are stored in the HDF5 file's root group.
     """
     def __init__(self, h5_file,
-                 default_pset=None,
                  bands=None,
-                 group=None):
+                 group='/'):
         super(LibraryBuilder, self).__init__()
         self.h5_file = h5_file
-
-        if default_pset is None:
-            self.default_pset = {}
-        else:
-            self.default_pset = dict(default_pset)
-
-        if bands is None:
-            self.bands = []
-        else:
-            self.bands = list(bands)
+        self.group_name = group
+        self.h5_file.create_group(self.group_name)
 
         self.generators = OrderedDict()
+
+    @property
+    def group(self):
+        """The HDF5 group with the model parameters and realizations."""
+        return self.h5_file[self.group_name]
 
     def add_parameter(self, param_generator):
         """Add a parameter to our library.
@@ -88,9 +84,9 @@ class LibraryBuilder(object):
             # checking (i.e., might want all tburst after tstart, etc)
 
         # Persist the parameter catalog to HDF5; delete existing
-        if "params" in self.h5_file:
-            del self.h5_file["params"]
-        self.h5_file.create_dataset("params", data=data)
+        if "params" in self.group:
+            del self.group["params"]
+        self.group.create_dataset("params", data=data)
 
     def compute_library_seds(self, bands, age=13.7, default_pset=None):
         """Compute an SED for each library model instance.
@@ -120,34 +116,34 @@ class LibraryBuilder(object):
         # Build the SED table
         table_names = ['seds', 'mass_light', 'meta']
         for name in table_names:
-            if name in self.h5_file:
-                del self.h5_file[name]
+            if name in self.group:
+                del self.group[name]
 
         # Table for SEDs
-        n_models = len(self.h5_file["params"])
+        n_models = len(self.group["params"])
         dtype = np.dtype([(n, np.float) for n in bands])
-        sed_table = self.h5_file.create_dataset("seds",
-                                                (n_models,),
-                                                dtype=dtype)
+        sed_table = self.group.create_dataset("seds",
+                                              (n_models,),
+                                              dtype=dtype)
 
         # Table for M/L ratios
         dtype = np.dtype([(n, np.float) for n in bands])
-        ml_table = self.h5_file.create_dataset("mass_light",
-                                               (n_models,),
-                                               dtype=dtype)
+        ml_table = self.group.create_dataset("mass_light",
+                                             (n_models,),
+                                             dtype=dtype)
 
         # Table for metadata (stellar mass, dust mass, etc..)
         meta_cols = ('logMstar', 'logMdust', 'logLbol', 'logSFR', 'logAge')
         dtype = np.dtype([(n, np.float) for n in meta_cols])
-        meta_table = self.h5_file.create_dataset("meta",
-                                                 (n_models,),
-                                                 dtype=dtype)
+        meta_table = self.group.create_dataset("meta",
+                                               (n_models,),
+                                               dtype=dtype)
 
         # Iterate on each model
         # TODO eventually split this work between processors
-        sp_param_names = self.h5_file['params'].dtype.names
+        sp_param_names = self.group['params'].dtype.names
         sp = fsps.StellarPopulation(**default_pset)
-        for i, row in enumerate(self.h5_file["params"]):
+        for i, row in enumerate(self.group["params"]):
             for n, p in zip(sp_param_names, row):
                 sp.params[n] = float(p)
             mags = sp.get_mags(tage=age, bands=bands)
