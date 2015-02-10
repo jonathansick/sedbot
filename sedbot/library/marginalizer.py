@@ -7,10 +7,12 @@ Marginalize over a library to estimate the stellar population of an SED.
 import numpy as np
 import multiprocessing
 
+from scipy.optimize import leastsq
+
 
 class LibraryMarginalizer(object):
     """Estimate a stellar population by marginalizing the observed SED
-    over a library models.
+    over a library of models.
 
     Parameters
     ----------
@@ -26,8 +28,8 @@ class LibraryMarginalizer(object):
         self.h5_file = h5_file
         self.group_name = group
 
-    def model_likelihoods(self, obs_flux, obs_err, bands, d, ncpu=1):
-        """Compute likeihood of model SEDs given observations.
+    def model_ln_likelihood(self, obs_flux, obs_err, bands, d, ncpu=1):
+        """Compute ln likelihood of model SEDs given observations.
 
         Parameters
         ----------
@@ -45,8 +47,7 @@ class LibraryMarginalizer(object):
         Returns
         -------
         result : todo
-            Table of posterior likelihoods for each model; marginalized
-            quantiles for stellar population parameters.
+            Table of ln likelihood for each model
         """
         if ncpu > 1:
             pool = multiprocessing.Pool(ncpu)
@@ -62,10 +63,14 @@ class LibraryMarginalizer(object):
         for i in xrange(model_flux.shape[0]):
             args.append((obs_flux, obs_err, model_flux[i, :].flatten()))
 
-        results = _map(_compute_likelihood, args)
+        results = _map(_compute_lnp, args)
+        print results
 
 
-def _compute_likelihood(args):
+def _compute_lnp(args):
     obs_flux, obs_err, model_flux = args
-    print(model_flux / obs_flux)
-    return 0.
+    residuals = lambda x: (x * model_flux - obs_flux) / obs_err
+    info = leastsq(residuals, 1.)
+    mass = float(info[0])
+    lnL = - np.sum(residuals(mass) ** 2.)
+    return lnL, mass
