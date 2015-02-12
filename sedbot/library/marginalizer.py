@@ -44,8 +44,10 @@ class LibraryMarginalizer(object):
 
         Returns
         -------
-        result : todo
-            Table of ln likelihood for each model
+        result : ndarray
+            Structured numpy array with column ``'lnp'`` and ``'mass'``
+            giving the un-normalized posterior probability and mass scaling
+            for each model template.
         """
         if ncpu > 1:
             pool = multiprocessing.Pool(ncpu)
@@ -62,7 +64,12 @@ class LibraryMarginalizer(object):
             args.append((obs_flux, obs_err, model_flux[i, :].flatten()))
 
         results = _map(_compute_lnp, args)
-        print results
+        d = np.dtype([('lnp', np.float), ('mass', np.float)])
+        output_data = np.empty(model_flux.shape[0], dtype=d)
+        for i, (lnp, mass) in enumerate(results):
+            output_data['lnp'][i] = lnp
+            output_data['mass'][i] = mass
+        return output_data
 
 
 def _compute_lnp(args):
