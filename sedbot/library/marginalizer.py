@@ -7,8 +7,6 @@ Marginalize over a library to estimate the stellar population of an SED.
 import numpy as np
 import multiprocessing
 
-from scipy.optimize import leastsq
-
 
 class LibraryMarginalizer(object):
     """Estimate a stellar population by marginalizing the observed SED
@@ -69,8 +67,12 @@ class LibraryMarginalizer(object):
 
 def _compute_lnp(args):
     obs_flux, obs_err, model_flux = args
+    # This math minimizes chi-sq in the residuals equation; and gives mass
+    _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
+    _b = np.sum((model_flux / obs_err))
+    mass = _a / _b
     residuals = lambda x: (x * model_flux - obs_flux) / obs_err
-    info = leastsq(residuals, 1.)
-    mass = float(info[0])
+    # info = leastsq(residuals, 1.)
+    # mass = float(info[0])
     lnL = - np.sum(residuals(mass) ** 2.)
     return lnL, mass
