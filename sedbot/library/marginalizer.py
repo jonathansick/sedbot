@@ -8,25 +8,38 @@ import numpy as np
 import multiprocessing
 
 
-class LibraryMarginalizer(object):
+class LibraryEstimator(object):
     """Estimate a stellar population by marginalizing the observed SED
-    over a library of models.
+    over a library of models to estimate stellar population parameters.
 
     Parameters
     ----------
-    h5_file : :class:`h5py.File`
+    obs_flux : ndarray
+        Observed flux, in apparent micro Janskies.
+    obs_err : ndarray
+        Observed flux error, in apparent micro Janskies.
+    bands : list
+        FSPS bandpass names.
+    d : float
+        Distance, in parsecs.
+    library_h5_file : :class:`h5py.File`
         File object for an HDF5 file. To create an in-memory file, use:
         `h5py.File('in_memory.hdf5', driver='core', backing_store=False)`.
-    group : str
+    library_group : str
         (optional) Name of group within the HDF5 table to store the library's
         tables. By default tables are stored in the HDF5 file's root group.
+    ncpu : int
+        Number of processors to use for computations.
     """
-    def __init__(self, h5_file, group='/'):
-        super(LibraryMarginalizer, self).__init__()
-        self.h5_file = h5_file
-        self.group_name = group
+    def __init__(self, obs_flux, obs_err, bands, d,
+                 library_h5_file, library_group='/', ncpu=1):
+        super(LibraryEstimator, self).__init__()
+        self.library_h5_file = library_h5_file
+        self.library_group_name = library_group
+        self.chisq_data = self._model_ln_likelihood(obs_flux, obs_err,
+                                                    bands, d, ncpu)
 
-    def model_ln_likelihood(self, obs_flux, obs_err, bands, d, ncpu=1):
+    def _model_ln_likelihood(self, obs_flux, obs_err, bands, d, ncpu):
         """Compute ln likelihood of model SEDs given observations.
 
         Parameters
@@ -58,12 +71,12 @@ class LibraryMarginalizer(object):
         # FIXME this pattern loads everything into memory; maybe not good
         args = []
         bands = tuple(bands)  # to slice by bandpass (columns)
-        x = self.h5_file[self.group_name]['seds'][bands]
+        x = self.library_h5_file[self.library_group_name]['seds'][bands]
         model_flux = x.view(np.float64).reshape(x.shape + (-1,))
         for i in xrange(model_flux.shape[0]):
             args.append((obs_flux, obs_err, model_flux[i, :].flatten()))
 
-        results = _map(_compute_lnp, args)
+        results = _map(LibraryEstimator._compute_lnp, args)
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
         output_data = np.empty(model_flux.shape[0], dtype=d)
         for i, (lnp, mass) in enumerate(results):
@@ -71,14 +84,14 @@ class LibraryMarginalizer(object):
             output_data['mass'][i] = mass
         return output_data
 
-
-def _compute_lnp(args):
-    """See da Cunha, Charlot and Elbaz (2008) eq 33 for info."""
-    obs_flux, obs_err, model_flux = args
-    # This math minimizes chi-sq in the residuals equation; and gives mass
-    _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
-    _b = np.sum((model_flux / obs_err) ** 2.)
-    mass = _a / _b
-    residuals = lambda x: (x * model_flux - obs_flux) / obs_err
-    lnL = - np.sum(residuals(mass) ** 2.)
-    return lnL, mass
+    @staticmethod
+    def _compute_lnp(args):
+        """See da Cunha, Charlot and Elbaz (2008) eq 33 for info."""
+        obs_flux, obs_err, model_flux = args
+        # This math minimizes chi-sq in the residuals equation; and gives mass
+        _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
+        _b = np.sum((model_flux / obs_err) ** 2.)
+        mass = _a / _b
+        residuals = lambda x: (x * model_flux - obs_flux) / obs_err
+        lnL = - np.sum(residuals(mass) ** 2.)
+        return lnL, mass
