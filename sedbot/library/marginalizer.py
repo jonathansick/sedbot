@@ -73,13 +73,12 @@ class LibraryMarginalizer(object):
 
 
 def _compute_lnp(args):
+    """See da Cunha, Charlot and Elbaz (2008) eq 33 for info."""
     obs_flux, obs_err, model_flux = args
     # This math minimizes chi-sq in the residuals equation; and gives mass
     _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
-    _b = np.sum((model_flux / obs_err))
+    _b = np.sum((model_flux / obs_err) ** 2.)
     mass = _a / _b
     residuals = lambda x: (x * model_flux - obs_flux) / obs_err
-    # info = leastsq(residuals, 1.)
-    # mass = float(info[0])
     lnL = - np.sum(residuals(mass) ** 2.)
     return lnL, mass
