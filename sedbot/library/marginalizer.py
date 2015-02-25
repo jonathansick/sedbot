@@ -84,6 +84,32 @@ class LibraryEstimator(object):
             output_data['mass'][i] = mass
         return output_data
 
+    def estimate(self, name, p=(20., 50., 80.)):
+        """Perform marginalization to generate PDF estimates at the given
+        probability thresholds.
+        """
+        # Get the library parameter values
+        # TODO think about how to special-case the mass scaling parameter
+        if name == 'mass':
+            model_values = self.chisq_data['mass']
+        else:
+            model_values = \
+                self.library_h5_file[self.library_group_name]['params'][name]
+        print('model values', model_values)
+        sort = np.argsort(model_values)
+        # Build the empirical cumulative distribution function (cdf)
+        model_p = np.exp(self.chisq_data['lnp'][sort])
+        p_norm = np.sum(model_p)
+        model_p /= p_norm
+        sorted_values = model_values[sort]
+        cdf = np.cumsum(model_p)
+        print('cdf.shape', cdf.shape)
+        print('cdf', cdf)
+        # Linearly Interpolate the CDF to get value at each percentile
+        percentile_values = np.interp(p, cdf, sorted_values)
+        print('percentile_values', percentile_values)
+        return percentile_values
+
     @staticmethod
     def _compute_lnp(args):
         """See da Cunha, Charlot and Elbaz (2008) eq 33 for info."""
