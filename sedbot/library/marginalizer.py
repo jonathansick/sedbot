@@ -84,7 +84,7 @@ class LibraryEstimator(object):
             output_data['mass'][i] = mass
         return output_data
 
-    def estimate(self, name, p=(20., 50., 80.)):
+    def estimate(self, name, p=(0.2, 0.5, 0.8)):
         """Perform marginalization to generate PDF estimates at the given
         probability thresholds.
         """
@@ -95,22 +95,46 @@ class LibraryEstimator(object):
         else:
             model_values = \
                 self.library_h5_file[self.library_group_name]['params'][name]
-        # print('model values', model_values)
-        sort = np.argsort(model_values)
-        # Build the empirical cumulative distribution function (cdf)
-        model_prob = np.exp(self.chisq_data['lnp'][sort])
-        # print('model_prob', model_prob)
-        p_norm = np.sum(model_prob)
-        print('p_norm', p_norm)
-        model_prob /= p_norm
-        sorted_values = model_values[sort]
-        cdf = np.cumsum(model_prob)
-        # print('cdf.shape', cdf.shape)
-        # print('cdf', cdf)
-        # Linearly Interpolate the CDF to get value at each percentile
-        percentile_values = np.interp(p, cdf, sorted_values)
+        grid = self._build_histogram_grid(model_values)
+        pdf = self._build_pdf(model_values, self.chisq_data['lnp'], grid)
+        # convert the PDF to a CDF
+        delta = grid[1] - grid[0]
+        cdf = np.cumsum(pdf * delta)
+        grid_center = 0.5 * (grid[0:-1] + grid[1:])
+        percentile_values = np.interp(p, cdf, grid_center)
+        print('grid_center', grid_center)
+        print('cdf', cdf)
+        print("cdf last bin == 1?", cdf[-1])
+        print("cdf.shape", cdf.shape)
+        print("grid.shape", grid.shape)
         print('percentile_values', percentile_values)
+
+        # # print('model values', model_values)
+        # sort = np.argsort(model_values)
+        # # Build the empirical cumulative distribution function (cdf)
+        # model_prob = np.exp(self.chisq_data['lnp'][sort])
+        # # print('model_prob', model_prob)
+        # p_norm = np.sum(model_prob)
+        # print('p_norm', p_norm)
+        # model_prob /= p_norm
+        # sorted_values = model_values[sort]
+        # cdf = np.cumsum(model_prob)
+        # # print('cdf.shape', cdf.shape)
+        # # print('cdf', cdf)
+        # # Linearly Interpolate the CDF to get value at each percentile
+        # percentile_values = np.interp(p, cdf, sorted_values)
+        # print('percentile_values', percentile_values)
         return percentile_values
+
+    def _build_histogram_grid(self, model_values, n_elements=1500):
+        grid = np.linspace(model_values.min(), model_values.max(),
+                           num=n_elements)
+        return grid
+
+    def _build_pdf(self, model_values, lnp, grid):
+        pdf, _ = np.histogram(model_values, bins=grid, weights=np.exp(lnp),
+                              density=True)
+        return pdf
 
     @staticmethod
     def _compute_lnp(args):
