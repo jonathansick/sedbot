@@ -95,16 +95,18 @@ class LibraryEstimator(object):
         else:
             model_values = \
                 self.library_h5_file[self.library_group_name]['params'][name]
-        print('model values', model_values)
+        # print('model values', model_values)
         sort = np.argsort(model_values)
         # Build the empirical cumulative distribution function (cdf)
-        model_p = np.exp(self.chisq_data['lnp'][sort])
-        p_norm = np.sum(model_p)
-        model_p /= p_norm
+        model_prob = np.exp(self.chisq_data['lnp'][sort])
+        # print('model_prob', model_prob)
+        p_norm = np.sum(model_prob)
+        print('p_norm', p_norm)
+        model_prob /= p_norm
         sorted_values = model_values[sort]
-        cdf = np.cumsum(model_p)
-        print('cdf.shape', cdf.shape)
-        print('cdf', cdf)
+        cdf = np.cumsum(model_prob)
+        # print('cdf.shape', cdf.shape)
+        # print('cdf', cdf)
         # Linearly Interpolate the CDF to get value at each percentile
         percentile_values = np.interp(p, cdf, sorted_values)
         print('percentile_values', percentile_values)
@@ -119,5 +121,5 @@ class LibraryEstimator(object):
         _b = np.sum((model_flux / obs_err) ** 2.)
         mass = _a / _b
         residuals = lambda x: (x * model_flux - obs_flux) / obs_err
-        lnL = - np.sum(residuals(mass) ** 2.)
+        lnL = -0.5 * np.sum(residuals(mass) ** 2.)
         return lnL, mass
