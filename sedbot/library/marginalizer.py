@@ -102,28 +102,6 @@ class LibraryEstimator(object):
         cdf = np.cumsum(pdf * delta)
         grid_center = 0.5 * (grid[0:-1] + grid[1:])
         percentile_values = np.interp(p, cdf, grid_center)
-        print('grid_center', grid_center)
-        print('cdf', cdf)
-        print("cdf last bin == 1?", cdf[-1])
-        print("cdf.shape", cdf.shape)
-        print("grid.shape", grid.shape)
-        print('percentile_values', percentile_values)
-
-        # # print('model values', model_values)
-        # sort = np.argsort(model_values)
-        # # Build the empirical cumulative distribution function (cdf)
-        # model_prob = np.exp(self.chisq_data['lnp'][sort])
-        # # print('model_prob', model_prob)
-        # p_norm = np.sum(model_prob)
-        # print('p_norm', p_norm)
-        # model_prob /= p_norm
-        # sorted_values = model_values[sort]
-        # cdf = np.cumsum(model_prob)
-        # # print('cdf.shape', cdf.shape)
-        # # print('cdf', cdf)
-        # # Linearly Interpolate the CDF to get value at each percentile
-        # percentile_values = np.interp(p, cdf, sorted_values)
-        # print('percentile_values', percentile_values)
         return percentile_values
 
     def _build_histogram_grid(self, model_values, n_elements=1500):
