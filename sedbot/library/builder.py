@@ -126,7 +126,7 @@ class LibraryBuilder(object):
                                               (n_models,),
                                               dtype=dtype)
 
-        # Table for M/L ratios
+        # Table for M/L ratios in each bandpass
         dtype = np.dtype([(n, np.float) for n in bands])
         ml_table = self.group.create_dataset("mass_light",
                                              (n_models,),

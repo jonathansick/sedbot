@@ -36,8 +36,88 @@ class LibraryEstimator(object):
         super(LibraryEstimator, self).__init__()
         self.library_h5_file = library_h5_file
         self.library_group_name = library_group
+        self.d = d
         self.chisq_data = self._model_ln_likelihood(obs_flux, obs_err,
                                                     bands, d, ncpu)
+
+    @property
+    def group(self):
+        return self.library_h5_file[self.library_group_name]
+
+    @property
+    def bands(self):
+        return self.group['seds'].dtype.names
+
+    @property
+    def params(self):
+        return self.group['params'].dtype.names
+
+    @property
+    def meta_params(self):
+        return self.group['meta'].dtype.names
+
+    def estimate(self, name, p=(0.2, 0.5, 0.8)):
+        """Perform marginalization to generate PDF estimates at the given
+        probability thresholds.
+        """
+        assert name in self.params
+        model_values = self.group['params'][name]
+        return self._estimate(model_values, p=p)
+
+    def estimate_mass_scale(self, p=(0.2, 0.5, 0.8)):
+        """Estimate of the mass scaling parameter."""
+        model_values = self.chisq_data['mass']
+        return self._estimate(model_values, p=p)
+
+    def estimate_flux(self, band, p=(0.2, 0.5, 0.8)):
+        """Estimate of marginalized model flux in a given band."""
+        assert band in self.bands
+        model_values = self.group['seds'][band]
+        return self._estimate(model_values, p=p)
+
+    def estimate_ml(self, band, p=(0.2, 0.5, 0.8)):
+        """Estimate of the M/L parameter in a given band."""
+        assert band in self.bands
+        model_values = self.group['mass_light'][band]
+        return self._estimate(model_values, p=p)
+
+    def estimate_meta(self, name, p=(0.2, 0.5, 0.8)):
+        """Estimate of a metadata parameter (computed stellar
+        population values that aren't input parameters or M/L.
+        """
+        assert name in self.meta_params
+        model_values = self.group['meta'][name]
+        return self._estimate(model_values, p=p)
+
+    def _estimate(self, model_values, p=(0.2, 0.5, 0.8)):
+        """Perform marginalization to generate PDF estimates at the given
+        probability thresholds.
+
+        Parameters
+        ----------
+        model_values : ndarray
+            A 1D ndarray of model values, corresponding to the table of models.
+        """
+        # TODO can this be trivially extended to 2D model value arrays?
+        grid = self._build_histogram_grid(model_values)
+        pdf = self._build_pdf(model_values, self.chisq_data['lnp'], grid)
+        # convert the PDF to a CDF
+        delta = grid[1] - grid[0]
+        cdf = np.cumsum(pdf * delta)
+        grid_center = 0.5 * (grid[0:-1] + grid[1:])
+        # TODO is this the hard part for using 2D model_values inputs?
+        percentile_values = np.interp(p, cdf, grid_center)
+        return percentile_values
+
+    def _build_histogram_grid(self, model_values, n_elements=1500):
+        grid = np.linspace(model_values.min(), model_values.max(),
+                           num=n_elements)
+        return grid
+
+    def _build_pdf(self, model_values, lnp, grid):
+        pdf, _ = np.histogram(model_values, bins=grid, weights=np.exp(lnp),
+                              density=True)
+        return pdf
 
     def _model_ln_likelihood(self, obs_flux, obs_err, bands, d, ncpu):
         """Compute ln likelihood of model SEDs given observations.
@@ -83,36 +163,6 @@ class LibraryEstimator(object):
             output_data['lnp'][i] = lnp
             output_data['mass'][i] = mass
         return output_data
-
-    def estimate(self, name, p=(0.2, 0.5, 0.8)):
-        """Perform marginalization to generate PDF estimates at the given
-        probability thresholds.
-        """
-        # Get the library parameter values
-        # TODO think about how to special-case the mass scaling parameter
-        if name == 'mass':
-            model_values = self.chisq_data['mass']
-        else:
-            model_values = \
-                self.library_h5_file[self.library_group_name]['params'][name]
-        grid = self._build_histogram_grid(model_values)
-        pdf = self._build_pdf(model_values, self.chisq_data['lnp'], grid)
-        # convert the PDF to a CDF
-        delta = grid[1] - grid[0]
-        cdf = np.cumsum(pdf * delta)
-        grid_center = 0.5 * (grid[0:-1] + grid[1:])
-        percentile_values = np.interp(p, cdf, grid_center)
-        return percentile_values
-
-    def _build_histogram_grid(self, model_values, n_elements=1500):
-        grid = np.linspace(model_values.min(), model_values.max(),
-                           num=n_elements)
-        return grid
-
-    def _build_pdf(self, model_values, lnp, grid):
-        pdf, _ = np.histogram(model_values, bins=grid, weights=np.exp(lnp),
-                              density=True)
-        return pdf
 
     @staticmethod
     def _compute_lnp(args):
