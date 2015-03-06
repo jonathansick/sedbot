@@ -91,19 +91,20 @@ class LibraryModel(object):
         return len(self._theta_params)
 
     @property
-    def n_phi(self):
-        """Number of phi parameters."""
-        return len(self._phi_params)
-
-    @property
     def theta_params(self):
         """Ordered list of theta-level parameter names."""
         return self._theta_params
 
     @property
-    def phi_params(self):
-        """Ordered list of phi-level parameter names."""
-        return self._phi_params
+    def meta_params(self):
+        """Ordered list of all computed parameters associated with a model."""
+        return self._estimator.meta_params
+
+    @property
+    def library_bands(self):
+        """Ordered list of all bands in the library SEDs
+        (c.f. `observed_bands`)"""
+        return self._estimator.bands
 
     @property
     def d(self):

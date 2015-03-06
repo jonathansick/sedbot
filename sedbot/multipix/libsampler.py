@@ -24,30 +24,44 @@ class MultiPixelLibraryGibbsBgSampler(object):
         super(MultiPixelLibraryGibbsBgSampler, self).__init__()
         self._model = model
 
-    def initialize_theta(self, B0):
-        """Initialize the stellar population parameters.
+    def estimate_theta(self, B):
+        """Estimate the stellar population parameters.
 
-        This can be used as an input for :meth:`sample`.
-
-        B0 : ndarray
+        B : ndarray
             Initial values for the background, a ``(n_band)`` array.
             Background is in units of flux per arcsec^2.
         """
         n_pixels = self._model.n_pix
         n_dim = self._model.n_theta
         theta = np.empty((n_pixels, n_dim), dtype=np.float)
+        blob = np.empty((n_pixels, len(self._model.meta_params)),
+                        dtype=np.float)
+        ml = np.empty((n_pixels, len(self._model.library_bands)),
+                      dtype=np.float)
+        sed = np.empty((n_pixels, len(self._model.library_bands)),
+                       dtype=np.float)
 
-        # Compute SP parameters for each SED
+        # Compute SP parameters for each SED, with background subtracted
         for i in xrange(n_pixels):
             estimator = LibraryEstimator(
-                self.model._seds[i, :], self.model._errs[i, :],
+                self.model._seds[i, :] - B, self.model._errs[i, :],
                 self._obs_bands, self.model.d,
                 self.model.library_file, self.model.library_group,
                 ncpu=1)
-            for j, name in enumerate(self.model.theta_params):
-                theta[i, j] = estimator.estimate(self, name, p=(0.5,))[0]
+            # marginal estimate of model parameters
+            for j, name in enumerate(self._model.theta_params):
+                theta[i, j] = estimator.estimate(name, p=(0.5,))[0]
+            # marginal estimate of metadata parameters
+            for j, name in enumerate(self._model.meta_params):
+                blob[i, j] = estimator.estimate_meta(name, p=(0.5,))[0]
+            # marginal estimate of M/L
+            for j, band in enumerate(self._model.library_bands):
+                ml[i, j] = estimator.estimate_ml(band, p=(0.5,))[0]
+            # marginal estimate of SED
+            for j, band in enumerate(self._model.library_bands):
+                sed[i, j] = estimator.estimate_flux(band, p=(0.5,))[0]
 
-        return theta
+        return theta, blob, ml, sed
 
     def sample(self, n_iter,
                theta0=None,
@@ -85,3 +99,40 @@ class MultiPixelLibraryGibbsBgSampler(object):
         else:
             assert theta0 is not None
             assert B0 is not None
+
+        # Initialize chains
+        i0 = self._init_chains(n_iter, theta0, B0)
+
+        with ProgressBar(n_iter) as bar:
+            for i in xrange(i0, i0 + n_iter):
+                # Sample stellar populations
+                # TODO estimate_theta should return a blob
+                theta_i, blob_i = self.estimate_theta(self.B[i - 1, :])
+
+                # TODO insert theta and blob into the chain
+                pass
+
+                # TODO background
+
+
+
+    def _init_chains(self, n_iter, theta0, B0):
+        """Initialize memory for the chain."""
+        self.theta = np.empty((n_iter + 1,
+                               self._model.n_pix,
+                               self._model.n_theta),
+                              dtype=np.float)
+        self.theta.fill(np.nan)
+        self.theta[0, :, :] = theta0
+
+        self.B = np.empty((n_iter + 1,
+                           self._model.n_bands),
+                          dtype=np.float)
+        self.B.fill(np.nan)
+        self.B[0, :] = B0
+
+        # blobs are for SP computed values, but are not input parameters
+        self.blobs = np.empty(n_iter + 1, dtype=self._model.blob_dtype)
+        self.blobs.fill(np.nan)
+
+        return 1
