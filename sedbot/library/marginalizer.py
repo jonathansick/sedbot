@@ -72,7 +72,8 @@ class LibraryEstimator(object):
     def estimate_flux(self, band, p=(0.2, 0.5, 0.8)):
         """Estimate of marginalized model flux in a given band."""
         assert band in self.bands
-        model_values = self.group['seds'][band]
+        # Flux is scaled by mass
+        model_values = self.group['seds'][band] * self.chisq_data['mass']
         return self._estimate(model_values, p=p)
 
     def estimate_ml(self, band, p=(0.2, 0.5, 0.8)):
@@ -87,6 +88,10 @@ class LibraryEstimator(object):
         """
         assert name in self.meta_params
         model_values = self.group['meta'][name]
+        # Whitelist of metadata that must be scaled by mass;
+        # FIXME a better way to do this more reliably?
+        if name in ('logMstar', 'logMdust', 'logLbol', 'logSFR'):
+            model_values += np.log10(self.chisq_data['mass'])
         return self._estimate(model_values, p=p)
 
     def _estimate(self, model_values, p=(0.2, 0.5, 0.8)):
