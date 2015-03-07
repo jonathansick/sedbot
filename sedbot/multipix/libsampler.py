@@ -7,6 +7,8 @@ estimates rather than MCMC.
 
 import numpy as np
 
+from astropy.utils.console import ProgressBar
+
 from sedbot.library.marginalizer import LibraryEstimator
 
 
@@ -24,47 +26,7 @@ class MultiPixelLibraryGibbsBgSampler(object):
         super(MultiPixelLibraryGibbsBgSampler, self).__init__()
         self._model = model
 
-    def estimate_theta(self, B):
-        """Estimate the stellar population parameters.
-
-        B : ndarray
-            Initial values for the background, a ``(n_band)`` array.
-            Background is in units of flux per arcsec^2.
-        """
-        n_pixels = self._model.n_pix
-        n_dim = self._model.n_theta
-        theta = np.empty((n_pixels, n_dim), dtype=np.float)
-        blob = np.empty((n_pixels, len(self._model.meta_params)),
-                        dtype=np.float)
-        ml = np.empty((n_pixels, len(self._model.library_bands)),
-                      dtype=np.float)
-        sed = np.empty((n_pixels, len(self._model.library_bands)),
-                       dtype=np.float)
-
-        # Compute SP parameters for each SED, with background subtracted
-        for i in xrange(n_pixels):
-            estimator = LibraryEstimator(
-                self.model._seds[i, :] - B, self.model._errs[i, :],
-                self._obs_bands, self.model.d,
-                self.model.library_file, self.model.library_group,
-                ncpu=1)
-            # marginal estimate of model parameters
-            for j, name in enumerate(self._model.theta_params):
-                theta[i, j] = estimator.estimate(name, p=(0.5,))[0]
-            # marginal estimate of metadata parameters
-            for j, name in enumerate(self._model.meta_params):
-                blob[i, j] = estimator.estimate_meta(name, p=(0.5,))[0]
-            # marginal estimate of M/L
-            for j, band in enumerate(self._model.library_bands):
-                ml[i, j] = estimator.estimate_ml(band, p=(0.5,))[0]
-            # marginal estimate of SED
-            for j, band in enumerate(self._model.library_bands):
-                sed[i, j] = estimator.estimate_flux(band, p=(0.5,))[0]
-
-        return theta, blob, ml, sed
-
     def sample(self, n_iter,
-               theta0=None,
                B0=None,
                chain=None):
         """Sample for `n_iter` Gibbs steps.
@@ -74,9 +36,6 @@ class MultiPixelLibraryGibbsBgSampler(object):
         n_iter : int
             Number of Gibbs steps (number of full iterations over all
             parameters)
-        theta0 : ndarray
-            Initial values for the theta parameters, a ``(n_pix, n_theta)``
-            array.
         B0 : ndarray
             Initial values for the background, a ``(n_band)`` array.
             Background is in units of flux per arcsec^2.
@@ -86,53 +45,96 @@ class MultiPixelLibraryGibbsBgSampler(object):
             `theta0`, `phi0` and `B0` manually).
         """
         if chain is not None:
-            theta0 = np.empty((self._model.n_pix, self._model.n_theta),
-                              dtype=np.float)
-            for i, n in enumerate(self._model.theta_params):
-                theta0[:, i] = chain[n][-1]
-
             B0 = np.empty(self._model.n_bands, dtype=np.float)
             for i, (n, instr) in enumerate(zip(self._model.observed_bands,
                                                self._model.instruments)):
                 name = "B__{0}__{1}".format(instr, n)
                 B0[i] = chain[name][-1]
         else:
-            assert theta0 is not None
             assert B0 is not None
 
         # Initialize chains
-        i0 = self._init_chains(n_iter, theta0, B0)
+        self._init_chains(n_iter)
 
         with ProgressBar(n_iter) as bar:
-            for i in xrange(i0, i0 + n_iter):
+            for i in xrange(n_iter):
                 # Sample stellar populations
-                # TODO estimate_theta should return a blob
-                theta_i, blob_i = self.estimate_theta(self.B[i - 1, :])
-
-                # TODO insert theta and blob into the chain
-                pass
+                self._estimate_theta(i, B=B0)
+                B0 = None
 
                 # TODO background
 
+                bar.update()
 
-
-    def _init_chains(self, n_iter, theta0, B0):
+    def _init_chains(self, n_iter):
         """Initialize memory for the chain."""
-        self.theta = np.empty((n_iter + 1,
-                               self._model.n_pix,
-                               self._model.n_theta),
-                              dtype=np.float)
-        self.theta.fill(np.nan)
-        self.theta[0, :, :] = theta0
+        # FSPS SP Parameter estimates
+        self.theta_chain = np.empty((n_iter + 1,
+                                     self._model.n_pix,
+                                     self._model.n_theta),
+                                    dtype=np.float)
+        self.theta_chain.fill(np.nan)
 
-        self.B = np.empty((n_iter + 1,
-                           self._model.n_bands),
-                          dtype=np.float)
-        self.B.fill(np.nan)
-        self.B[0, :] = B0
+        # Background estimates
+        self.B_chain = np.empty((n_iter + 1,
+                                 self._model.n_bands),
+                                dtype=np.float)
+        self.B_chain.fill(np.nan)
 
-        # blobs are for SP computed values, but are not input parameters
-        self.blobs = np.empty(n_iter + 1, dtype=self._model.blob_dtype)
-        self.blobs.fill(np.nan)
+        # FSPS computed metadata values
+        self.blob_chain = np.empty((n_iter + 1,
+                                    self._model.n_pix,
+                                    len(self._model.meta_params)),
+                                   dtype=np.float)
 
-        return 1
+        # M/L ratios in all library bands
+        self.ml_chain = np.empty((n_iter + 1,
+                                  self._model.n_pix,
+                                  len(self._model.library_bands)),
+                                 dtype=np.float)
+
+        # Model SED
+        self.sed_chain = np.empty((n_iter + 1,
+                                   self._model.n_pix,
+                                   len(self._model.library_bands)),
+                                  dtype=np.float)
+
+    def _estimate_theta(self, k, B=None):
+        """Estimate the stellar population parameters.
+
+        Parameters
+        ----------
+        B : ndarray
+            Optional values for the background, a ``(n_band)`` array.
+            Background is in units of flux per arcsec^2.
+            If `None` then the background is read from the previous value of
+            the background chain.
+        """
+        n_pixels = self._model.n_pix
+
+        if B is None:
+            B = self.B_chain[k - 1, :]
+
+        # Compute SP parameters for each SED, with background subtracted
+        for i in xrange(n_pixels):
+            le = LibraryEstimator(
+                self.model._seds[i, :] - B, self.model._errs[i, :],
+                self._obs_bands, self.model.d,
+                self.model.library_file, self.model.library_group,
+                ncpu=1)
+            # marginal estimate of model parameters
+            for j, name in enumerate(self._model.theta_params):
+                self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
+            # marginal estimate of metadata parameters
+            for j, name in enumerate(self._model.meta_params):
+                self.blob_chain[k, i, j] = le.estimate_meta(name, p=(0.5,))[0]
+            # marginal estimate of M/L
+            for j, band in enumerate(self._model.library_bands):
+                self.ml_chain[k, i, j] = le.estimate_ml(band, p=(0.5,))[0]
+            # marginal estimate of SED
+            for j, band in enumerate(self._model.library_bands):
+                self.sed_chain[k, i, j] = le.estimate_flux(band, p=(0.5,))[0]
+
+    def table(self):
+        """A :class:`MultiPixelChain` made the Gibbs sampler."""
+        pass
