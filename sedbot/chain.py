@@ -21,9 +21,9 @@ class SinglePixelChain(Table):
         other_table.meta = {}
         # Throw out last value of this table because it's probably going
         # to be the first value of the next one
-        return MultiPixelChain(vstack((self[:-1], other_table),
-                                      metadata_conflicts='silent',
-                                      join_type='exact'))
+        return SinglePixelChain(vstack((self[:-1], other_table),
+                                       metadata_conflicts='silent',
+                                       join_type='exact'))
 
     @property
     def sed_residuals_chain(self):
