@@ -62,7 +62,8 @@ class MultiPixelLibraryGibbsBgSampler(object):
                 self._estimate_theta(i, B=B0)
                 B0 = None
 
-                # TODO background
+                # Estimate background given current SP state
+                self._estimate_bavckground(i)
 
                 bar.update()
 
@@ -122,6 +123,8 @@ class MultiPixelLibraryGibbsBgSampler(object):
                 self._obs_bands, self.model.d,
                 self.model.library_file, self.model.library_group,
                 ncpu=1)
+            # FIXME hack to make this attribute available to background est
+            self._band_indices = le.band_indices
             # marginal estimate of model parameters
             for j, name in enumerate(self._model.theta_params):
                 self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
@@ -134,6 +137,23 @@ class MultiPixelLibraryGibbsBgSampler(object):
             # marginal estimate of SED
             for j, band in enumerate(self._model.library_bands):
                 self.sed_chain[k, i, j] = le.estimate_flux(band, p=(0.5,))[0]
+
+    def _estimate_background(self, k):
+        """Estimate the background given the current stellar population
+        parameter state.
+
+        The background update is *always* done after the theta update.
+
+        Parameters
+        ----------
+        k : int
+            Index of the current Gibbs step.
+        """
+        # Get the model SED matching the observed bands
+        # FIXME band indices obtained with a hack
+        model_seds = self.sed_chain[k, :, self._band_indices]
+        B_new = self.model.estimate_background(model_seds)
+        self.B_chain[k, :] = B_new
 
     def table(self):
         """A :class:`MultiPixelChain` made the Gibbs sampler."""

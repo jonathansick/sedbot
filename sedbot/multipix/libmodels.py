@@ -6,6 +6,8 @@ Models to use with a library-based Gibbs multipixel sampler.
 2015-03-04 - Created by Jonathan Sick
 """
 
+import numpy as np
+
 from sedbot.library.marginalizer import LibraryEstimator
 
 
@@ -118,3 +120,21 @@ class LibraryModel(object):
     @property
     def library_group(self):
         return self._group_name
+
+    def estimate_backgrond(self, model_seds):
+        diff_mean = np.empty(self.n_bands, dtype=np.float)
+        diff_var = np.empty(self.n_bands, dtype=np.float)
+        A = self._areas
+        # Do it band-at-a-time so we can filter out NaNs in each band
+        for i in xrange(self.n_bands):
+            obs_var = (self._errs[:, i] / A) ** 2.
+            g = np.where(np.isfinite(self._seds[:, i]))[0]
+            residuals = ((self._seds[:, i] - model_seds[:, i]) / A)[g]
+            diff_mean[i] = np.average(residuals,
+                                      weights=1. / obs_var[g])
+            # Establish the variance of the sampled Gaussian from
+            # error propagation, or from the sample variance of residuals???
+            diff_var[i] = 1. / np.sum(1. / obs_var[g])
+        B_new = np.sqrt(diff_var) * np.random.randn(self.n_bands) \
+            + diff_mean
+        return B_new
