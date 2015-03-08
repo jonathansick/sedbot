@@ -37,6 +37,8 @@ class LibraryEstimator(object):
         self.library_h5_file = library_h5_file
         self.library_group_name = library_group
         self.d = d
+        self._bands = bands
+        self._band_indices = None
         self.chisq_data = self._model_ln_likelihood(obs_flux, obs_err,
                                                     bands, d, ncpu)
 
@@ -55,6 +57,19 @@ class LibraryEstimator(object):
     @property
     def meta_params(self):
         return self.group['meta'].dtype.names
+
+    @property
+    def band_indices(self):
+        """List of indices of observed bands in the library's bands."""
+        # caching
+        # TODO throw exception if more observed bands than in library
+        if self._band_indices is None:
+            indices = np.zeros(len(self._bands), dtype=np.int)
+            for i, band in enumerate(self._bands):
+                idx = self.library_bands.index(band)
+                indices[i] = idx
+            self._band_indices = indices
+        return self._band_indices
 
     def estimate(self, name, p=(0.2, 0.5, 0.8)):
         """Perform marginalization to generate PDF estimates at the given
@@ -159,7 +174,9 @@ class LibraryEstimator(object):
         x = self.library_h5_file[self.library_group_name]['seds'][bands]
         model_flux = x.view(np.float64).reshape(x.shape + (-1,))
         for i in xrange(model_flux.shape[0]):
-            args.append((obs_flux, obs_err, model_flux[i, :].flatten()))
+            args.append((obs_flux,
+                         obs_err,
+                         model_flux[i, self.band_indices].flatten()))
 
         results = _map(LibraryEstimator._compute_lnp, args)
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
