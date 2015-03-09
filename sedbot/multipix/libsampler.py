@@ -8,9 +8,11 @@ estimates rather than MCMC.
 from collections import OrderedDict
 
 import numpy as np
-import fsps
 
+from astropy.table import Table, hstack
 from astropy.utils.console import ProgressBar
+
+from sedbot.chain import MultiPixelChain
 
 
 class MultiPixelLibraryGibbsBgSampler(object):
@@ -168,3 +170,38 @@ class MultiPixelLibraryGibbsBgSampler(object):
             ('pixels', self.model.pixel_metadata),
             ('area', self.model._areas),
             ('d', self.model.d)))
+
+        # Make tables for theta chain, B chain, and blob chain (that includes
+        # SED and M/L datasets)
+        # TODO we should probably just change the chain dtypes instead
+        # original table - (step, pixel, parameter)
+        # output table - (step, parameter, pixel)
+        theta_table = Table(np.swapaxes(self.theta_chain, 1, 2),
+                            names=self.mdoel.theta_params,
+                            meta=meta)
+
+        background_names = ["B__{0}__{1}".format(n, b)
+                            for n, b in zip(self.model.instruments,
+                                            self.model.observed_bands)]
+        B_table = Table(self.B, names=background_names)
+
+        meta_table = Table(np.swapaxes(self.blob_chain, 1, 2),
+                           names=self.model.meta_params)
+
+        # output table (step, band, pixel)
+        sed_table = Table(np.swapaxes(self.sed_chain, 1, 2),
+                          names=self.model.library_bands)
+
+        # output table (step, band, pixel)
+        # name columns to be different from flux
+        ml_names = ["logML_{0}".format(b) for b in self.model.library_bands]
+        ml_table = Table(np.swapaxes(self.ml_chain, 1, 2),
+                         names=ml_names)
+
+        tbl = MultiPixelChain(hstack((theta_table,
+                                      B_table,
+                                      meta_table,
+                                      sed_table,
+                                      ml_table)))
+
+        return tbl
