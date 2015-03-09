@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-from astropy.table import Table, hstack
+from astropy.table import Table, hstack, Column
 from astropy.utils.console import ProgressBar
 
 from sedbot.chain import MultiPixelChain
@@ -188,9 +188,10 @@ class MultiPixelLibraryGibbsBgSampler(object):
         meta_table = Table(np.swapaxes(self.blob_chain, 1, 2),
                            names=self.model.meta_params)
 
-        # output table (step, band, pixel)
-        sed_table = Table(np.swapaxes(self.sed_chain, 1, 2),
-                          names=self.model.library_bands)
+        # model_sed column is of shape (step, pixel, band)
+        # conforms to MultiPixelChain standard
+        meta_table.add_column(Column(name='model_sed',
+                                     data=self.sed_chain))
 
         # output table (step, band, pixel)
         # name columns to be different from flux
@@ -201,7 +202,6 @@ class MultiPixelLibraryGibbsBgSampler(object):
         tbl = MultiPixelChain(hstack((theta_table,
                                       B_table,
                                       meta_table,
-                                      sed_table,
                                       ml_table)))
 
         return tbl
