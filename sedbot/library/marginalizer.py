@@ -66,7 +66,7 @@ class LibraryEstimator(object):
         if self._band_indices is None:
             indices = np.zeros(len(self._bands), dtype=np.int)
             for i, band in enumerate(self._bands):
-                idx = self.library_bands.index(band)
+                idx = self.bands.index(band)
                 indices[i] = idx
             self._band_indices = indices
         return self._band_indices

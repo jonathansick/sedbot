@@ -5,11 +5,12 @@ Sampler for Multi Pixel Gibbs modelling, using a library-based SP
 estimates rather than MCMC.
 """
 
+from collections import OrderedDict
+
 import numpy as np
+import fsps
 
 from astropy.utils.console import ProgressBar
-
-from sedbot.library.marginalizer import LibraryEstimator
 
 
 class MultiPixelLibraryGibbsBgSampler(object):
@@ -24,7 +25,7 @@ class MultiPixelLibraryGibbsBgSampler(object):
     """
     def __init__(self, model):
         super(MultiPixelLibraryGibbsBgSampler, self).__init__()
-        self._model = model
+        self.model = model
 
     def sample(self, n_iter,
                B0=None,
@@ -45,9 +46,9 @@ class MultiPixelLibraryGibbsBgSampler(object):
             `theta0`, `phi0` and `B0` manually).
         """
         if chain is not None:
-            B0 = np.empty(self._model.n_bands, dtype=np.float)
-            for i, (n, instr) in enumerate(zip(self._model.observed_bands,
-                                               self._model.instruments)):
+            B0 = np.empty(self.model.n_bands, dtype=np.float)
+            for i, (n, instr) in enumerate(zip(self.model.observed_bands,
+                                               self.model.instruments)):
                 name = "B__{0}__{1}".format(instr, n)
                 B0[i] = chain[name][-1]
         else:
@@ -63,7 +64,7 @@ class MultiPixelLibraryGibbsBgSampler(object):
                 B0 = None
 
                 # Estimate background given current SP state
-                self._estimate_bavckground(i)
+                self._estimate_background(i)
 
                 bar.update()
 
@@ -71,33 +72,33 @@ class MultiPixelLibraryGibbsBgSampler(object):
         """Initialize memory for the chain."""
         # FSPS SP Parameter estimates
         self.theta_chain = np.empty((n_iter + 1,
-                                     self._model.n_pix,
-                                     self._model.n_theta),
+                                     self.model.n_pix,
+                                     self.model.n_theta),
                                     dtype=np.float)
         self.theta_chain.fill(np.nan)
 
         # Background estimates
         self.B_chain = np.empty((n_iter + 1,
-                                 self._model.n_bands),
+                                 self.model.n_bands),
                                 dtype=np.float)
         self.B_chain.fill(np.nan)
 
         # FSPS computed metadata values
         self.blob_chain = np.empty((n_iter + 1,
-                                    self._model.n_pix,
-                                    len(self._model.meta_params)),
+                                    self.model.n_pix,
+                                    len(self.model.meta_params)),
                                    dtype=np.float)
 
         # M/L ratios in all library bands
         self.ml_chain = np.empty((n_iter + 1,
-                                  self._model.n_pix,
-                                  len(self._model.library_bands)),
+                                  self.model.n_pix,
+                                  len(self.model.library_bands)),
                                  dtype=np.float)
 
         # Model SED
         self.sed_chain = np.empty((n_iter + 1,
-                                   self._model.n_pix,
-                                   len(self._model.library_bands)),
+                                   self.model.n_pix,
+                                   len(self.model.library_bands)),
                                   dtype=np.float)
 
     def _estimate_theta(self, k, B=None):
@@ -111,31 +112,25 @@ class MultiPixelLibraryGibbsBgSampler(object):
             If `None` then the background is read from the previous value of
             the background chain.
         """
-        n_pixels = self._model.n_pix
+        n_pixels = self.model.n_pix
 
         if B is None:
             B = self.B_chain[k - 1, :]
 
         # Compute SP parameters for each SED, with background subtracted
         for i in xrange(n_pixels):
-            le = LibraryEstimator(
-                self.model._seds[i, :] - B, self.model._errs[i, :],
-                self._obs_bands, self.model.d,
-                self.model.library_file, self.model.library_group,
-                ncpu=1)
-            # FIXME hack to make this attribute available to background est
-            self._band_indices = le.band_indices
+            le = self.model.estimator_for_pixel(i, B)
             # marginal estimate of model parameters
-            for j, name in enumerate(self._model.theta_params):
+            for j, name in enumerate(self.model.theta_params):
                 self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
             # marginal estimate of metadata parameters
-            for j, name in enumerate(self._model.meta_params):
+            for j, name in enumerate(self.model.meta_params):
                 self.blob_chain[k, i, j] = le.estimate_meta(name, p=(0.5,))[0]
             # marginal estimate of M/L
-            for j, band in enumerate(self._model.library_bands):
+            for j, band in enumerate(self.model.library_bands):
                 self.ml_chain[k, i, j] = le.estimate_ml(band, p=(0.5,))[0]
             # marginal estimate of SED
-            for j, band in enumerate(self._model.library_bands):
+            for j, band in enumerate(self.model.library_bands):
                 self.sed_chain[k, i, j] = le.estimate_flux(band, p=(0.5,))[0]
 
     def _estimate_background(self, k):
@@ -150,11 +145,29 @@ class MultiPixelLibraryGibbsBgSampler(object):
             Index of the current Gibbs step.
         """
         # Get the model SED matching the observed bands
-        # FIXME band indices obtained with a hack
-        model_seds = self.sed_chain[k, :, self._band_indices]
+        model_seds = self.sed_chain[k, :, self.model.band_indices]
         B_new = self.model.estimate_background(model_seds)
         self.B_chain[k, :] = B_new
 
+    @property
     def table(self):
-        """A :class:`MultiPixelChain` made the Gibbs sampler."""
-        pass
+        """A :class:`MultiPixelChain` representing the Gibbs chain.
+        
+        The intention is for the library sampler to have a data output
+        similar to the MH-in-Gibbs sampler.
+        """
+        # FIXME store MSUN in library?
+        msuns = np.array([fsps.get_filter(n).msun_ab
+                          for n in self.model.computed_bands])
+        meta = OrderedDict((
+            ('observed_bands', self.model.observed_bands),
+            ('instruments', self.model.instruments),
+            ('computed_bands', self.model.computed_bands),
+            ('msun_ab', msuns),
+            ('band_indices', self.model.band_indices),
+            ('theta_params', self.model.theta_params),
+            ('sed', self.model._seds),
+            ('sed_err', self.model._errs),
+            ('pixels', self.model.pixel_metadata),
+            ('area', self.model._areas),
+            ('d', self.model.d)))

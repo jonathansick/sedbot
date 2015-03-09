@@ -54,6 +54,8 @@ class LibraryModel(object):
         self._instruments = instruments
         self.pixel_metadata = pixel_metadata
 
+        self._group = h5_file[group_name]
+
         # Set indices of bands where background should always be reset to 0.
         if fixed_bg is not None:
             self._fixed_bg = {}
@@ -62,8 +64,6 @@ class LibraryModel(object):
                                                            sed_bands)):
                     if (instr == instrument) and (b == band):
                         self._fixed_bg[i] = level
-
-        self._estimator = LibraryEstimator(self._h5_file, self._group_name)
 
     @property
     def observed_bands(self):
@@ -76,6 +76,17 @@ class LibraryModel(object):
         return self._instruments
 
     @property
+    def band_indices(self):
+        """List of indices of observed bands in the library's bands."""
+        if self._band_indices is None:
+            indices = np.zeros(len(self.observed_bands), dtype=np.int)
+            for i, band in enumerate(self.observed_bands):
+                idx = self.library_bands.index(band)
+                indices[i] = idx
+            self._band_indices = indices
+        return self._band_indices
+
+    @property
     def n_pix(self):
         return self._seds.shape[0]
 
@@ -84,29 +95,25 @@ class LibraryModel(object):
         return self._seds.shape[1]
 
     @property
-    def n_computed_bands(self):
-        return len(self._compute_bands)
-
-    @property
     def n_theta(self):
         """Number of theta parameters."""
-        return len(self._theta_params)
+        return len(self.theta_params)
 
     @property
     def theta_params(self):
         """Ordered list of theta-level parameter names."""
-        return self._theta_params
+        return self._group['params'].dtype.names
 
     @property
     def meta_params(self):
         """Ordered list of all computed parameters associated with a model."""
-        return self._estimator.meta_params
+        return self._group['meta'].dtype.names
 
     @property
     def library_bands(self):
         """Ordered list of all bands in the library SEDs
         (c.f. `observed_bands`)"""
-        return self._estimator.bands
+        return self._group['seds'].dtype.names
 
     @property
     def d(self):
@@ -121,7 +128,16 @@ class LibraryModel(object):
     def library_group(self):
         return self._group_name
 
-    def estimate_backgrond(self, model_seds):
+    def estimator_for_pixel(self, pix_id, B, ncpu=1):
+        """Make a LibraryEstimator instance for this pixel."""
+        le = LibraryEstimator(
+            self._seds[pix_id, :] - B, self._errs[pix_id, :],
+            self._obs_bands, self.d,
+            self.library_file, self.library_group,
+            ncpu=ncpu)
+        return le
+
+    def estimate_background(self, model_seds):
         diff_mean = np.empty(self.n_bands, dtype=np.float)
         diff_var = np.empty(self.n_bands, dtype=np.float)
         A = self._areas
@@ -137,4 +153,6 @@ class LibraryModel(object):
             diff_var[i] = 1. / np.sum(1. / obs_var[g])
         B_new = np.sqrt(diff_var) * np.random.randn(self.n_bands) \
             + diff_mean
+
+        # TODO reset background for fixed background bands
         return B_new
