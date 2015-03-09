@@ -152,18 +152,15 @@ class MultiPixelLibraryGibbsBgSampler(object):
     @property
     def table(self):
         """A :class:`MultiPixelChain` representing the Gibbs chain.
-        
+
         The intention is for the library sampler to have a data output
         similar to the MH-in-Gibbs sampler.
         """
-        # FIXME store MSUN in library?
-        msuns = np.array([fsps.get_filter(n).msun_ab
-                          for n in self.model.computed_bands])
         meta = OrderedDict((
             ('observed_bands', self.model.observed_bands),
             ('instruments', self.model.instruments),
-            ('computed_bands', self.model.computed_bands),
-            ('msun_ab', msuns),
+            ('computed_bands', self.model.library_bands),
+            ('msun_ab', self.model.msun_ab),
             ('band_indices', self.model.band_indices),
             ('theta_params', self.model.theta_params),
             ('sed', self.model._seds),

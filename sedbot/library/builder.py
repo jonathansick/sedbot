@@ -38,7 +38,6 @@ class LibraryBuilder(object):
         tables. By default tables are stored in the HDF5 file's root group.
     """
     def __init__(self, h5_file,
-                 bands=None,
                  group='/'):
         super(LibraryBuilder, self).__init__()
         self.h5_file = h5_file
@@ -112,6 +111,10 @@ class LibraryBuilder(object):
 
         # Solar magnitude in each bandpass
         solar_mags = [fsps.get_filter(n).msun_ab for n in bands]
+
+        # Add bands and AB solar mags to the group attr metadata
+        self.group.attrs['bands'] = bands
+        self.group.attrs['msun_ab'] = solar_mags
 
         # Build the SED table
         table_names = ['seds', 'mass_light', 'meta']

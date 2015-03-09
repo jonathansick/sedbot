@@ -113,7 +113,12 @@ class LibraryModel(object):
     def library_bands(self):
         """Ordered list of all bands in the library SEDs
         (c.f. `observed_bands`)"""
-        return self._group['seds'].dtype.names
+        return self._group.attrs['bands']
+
+    @property
+    def msun_ab(self):
+        """AB solar magnitudes for all library bands."""
+        return self._group.attrs['msun_ab']
 
     @property
     def d(self):
