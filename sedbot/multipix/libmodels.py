@@ -154,5 +154,8 @@ class LibraryModel(object):
         B_new = np.sqrt(diff_var) * np.random.randn(self.n_bands) \
             + diff_mean
 
-        # TODO reset background for fixed background bands
+        # reset B for any images with fixed background
+        for band_index, level in self._fixed_bg.iteritems():
+            B_new[band_index] = level
+
         return B_new
