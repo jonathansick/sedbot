@@ -42,7 +42,8 @@ class LibraryBuilder(object):
         super(LibraryBuilder, self).__init__()
         self.h5_file = h5_file
         self.group_name = group
-        self.h5_file.create_group(self.group_name)
+        if group not in self.h5_file:
+            self.h5_file.create_group(self.group_name)
 
         self.generators = OrderedDict()
 
