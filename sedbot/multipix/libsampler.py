@@ -14,6 +14,8 @@ from astropy.utils.console import ProgressBar
 
 from sedbot.chain import MultiPixelChain
 
+from sedbot.utils.timer import Timer
+
 
 class MultiPixelLibraryGibbsBgSampler(object):
     """Library-in-Gibbs sampler for two-level hierarchical models of pixel
@@ -25,9 +27,10 @@ class MultiPixelLibraryGibbsBgSampler(object):
         A LibraryModel instance that encapsulates the library SEDs and the
         observed SEDs.
     """
-    def __init__(self, model):
+    def __init__(self, model, ncpu=1):
         super(MultiPixelLibraryGibbsBgSampler, self).__init__()
         self.model = model
+        self._n_cpu_estimator = ncpu
 
     def sample(self, n_iter,
                B0=None,
@@ -122,11 +125,13 @@ class MultiPixelLibraryGibbsBgSampler(object):
         # Compute SP parameters for each SED, with background subtracted
         for i in xrange(n_pixels):
             print "Pixel {0:d}".format(i)
-            le = self.model.estimator_for_pixel(i, B)
+            le = self.model.estimator_for_pixel(i, B,
+                                                ncpu=self._n_cpu_estimator)
             # marginal estimate of model parameters
             for j, name in enumerate(self.model.theta_params):
-                print name
-                self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
+                with Timer() as timer:
+                    self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
+                print name, timer
             # marginal estimate of metadata parameters
             for j, name in enumerate(self.model.meta_params):
                 print name

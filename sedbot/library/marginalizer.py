@@ -7,6 +7,8 @@ Marginalize over a library to estimate the stellar population of an SED.
 import numpy as np
 import multiprocessing
 
+from sedbot.utils.timer import Timer
+
 
 class LibraryEstimator(object):
     """Estimate a stellar population by marginalizing the observed SED
@@ -179,7 +181,9 @@ class LibraryEstimator(object):
                          obs_err,
                          model_flux[i, :].flatten()))
 
-        results = _map(LibraryEstimator._compute_lnp, args)
+        with Timer() as timer:
+            results = _map(LibraryEstimator._compute_lnp, args)
+        print "Marginalization took", timer
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
         output_data = np.empty(model_flux.shape[0], dtype=d)
         for i, (lnp, mass) in enumerate(results):
