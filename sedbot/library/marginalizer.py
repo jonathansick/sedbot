@@ -5,7 +5,6 @@ Marginalize over a library to estimate the stellar population of an SED.
 """
 
 import numpy as np
-import multiprocessing
 
 from sedbot.utils.timer import Timer
 
@@ -164,44 +163,24 @@ class LibraryEstimator(object):
             giving the un-normalized posterior probability and mass scaling
             for each model template.
         """
-        if ncpu > 1:
-            pool = multiprocessing.Pool(ncpu)
-            _map = pool.map
-        else:
-            _map = map
-
         # FIXME this pattern loads everything into memory; maybe not good
-        args = []
+        # args = []
         bands = tuple(bands)  # to slice by bandpass (columns)
         # this slices only the bands used for observations
-        with Timer() as timer:
-            x = self.library_h5_file[self.library_group_name]['seds'][bands]
-            model_flux = x.view(np.float64).reshape(x.shape + (-1,))
-        print "Reading model SEDs took ", timer
-        for i in xrange(model_flux.shape[0]):
-            m_flux = model_flux[i, :].flatten()
-            args.append((obs_flux,
-                         obs_err,
-                         m_flux))
+        x = self.library_h5_file[self.library_group_name]['seds'][bands]
+        model_flux = x.view(np.float64).reshape(x.shape + (-1,))
 
         with Timer() as timer:
-            results = _map(_compute_lnp, args)
+            # See da Cunha, Charlot and Elbaz (2008) eq 33 for info.
+            a = np.sum(obs_flux * model_flux / obs_err ** 2., axis=1)
+            b = np.sum((model_flux / obs_err) ** 2., axis=1)
+            mass = a / b
+            residuals = (np.atleast_2d(mass).T * model_flux - obs_flux) \
+                / obs_err
+            lnp = -0.5 * np.sum(residuals ** 2., axis=1)
         print "Marginalization took", timer
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
         output_data = np.empty(model_flux.shape[0], dtype=d)
-        for i, (lnp, mass) in enumerate(results):
-            output_data['lnp'][i] = lnp
-            output_data['mass'][i] = mass
+        output_data['lnp'] = lnp.flatten()
+        output_data['mass'] = mass.flatten()
         return output_data
-
-
-def _compute_lnp(args):
-    """See da Cunha, Charlot and Elbaz (2008) eq 33 for info."""
-    obs_flux, obs_err, model_flux = args
-    # This math minimizes chi-sq in the residuals equation; and gives mass
-    _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
-    _b = np.sum((model_flux / obs_err) ** 2.)
-    mass = _a / _b
-    residuals = (mass * model_flux - obs_flux) / obs_err
-    lnL = -0.5 * np.sum(residuals ** 2.)
-    return lnL, mass
