@@ -174,8 +174,10 @@ class LibraryEstimator(object):
         args = []
         bands = tuple(bands)  # to slice by bandpass (columns)
         # this slices only the bands used for observations
-        x = self.library_h5_file[self.library_group_name]['seds'][bands]
-        model_flux = x.view(np.float64).reshape(x.shape + (-1,))
+        with Timer() as timer:
+            x = self.library_h5_file[self.library_group_name]['seds'][bands]
+            model_flux = x.view(np.float64).reshape(x.shape + (-1,))
+        print "Reading model SEDs took ", timer
         for i in xrange(model_flux.shape[0]):
             m_flux = model_flux[i, :].flatten()
             args.append((obs_flux,
