@@ -158,7 +158,8 @@ class MultiPixelLibraryGibbsBgSampler(object):
         """
         # Get the model SED matching the observed bands
         model_seds = self.sed_chain[k, :, self.model.band_indices]
-        B_new = self.model.estimate_background(model_seds)
+        # transpose to to make a (n_sed, n_band) array)... I know right?
+        B_new = self.model.estimate_background(model_seds.T)
         self.B_chain[k, :] = B_new
 
     @property
@@ -187,13 +188,13 @@ class MultiPixelLibraryGibbsBgSampler(object):
         # original table - (step, pixel, parameter)
         # output table - (step, parameter, pixel)
         theta_table = Table(np.swapaxes(self.theta_chain, 1, 2),
-                            names=self.mdoel.theta_params,
+                            names=self.model.theta_params,
                             meta=meta)
 
         background_names = ["B__{0}__{1}".format(n, b)
                             for n, b in zip(self.model.instruments,
                                             self.model.observed_bands)]
-        B_table = Table(self.B, names=background_names)
+        B_table = Table(self.B_chain, names=background_names)
 
         meta_table = Table(np.swapaxes(self.blob_chain, 1, 2),
                            names=self.model.meta_params)

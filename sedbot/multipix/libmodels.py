@@ -114,7 +114,7 @@ class LibraryModel(object):
     def library_bands(self):
         """Ordered list of all bands in the library SEDs
         (c.f. `observed_bands`)"""
-        return self._group.attrs['bands']
+        return tuple(self._group.attrs['bands'])
 
     @property
     def msun_ab(self):
@@ -144,6 +144,12 @@ class LibraryModel(object):
         return le
 
     def estimate_background(self, model_seds):
+        """"
+        Parameters
+        ----------
+        model_seds : ndarray
+            A `(n_sed, n_band)` array
+        """
         diff_mean = np.empty(self.n_bands, dtype=np.float)
         diff_var = np.empty(self.n_bands, dtype=np.float)
         A = self._areas
