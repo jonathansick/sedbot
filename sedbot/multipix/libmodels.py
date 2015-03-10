@@ -55,6 +55,7 @@ class LibraryModel(object):
         self.pixel_metadata = pixel_metadata
 
         self._group = h5_file[group_name]
+        self._band_indices = None
 
         # Set indices of bands where background should always be reset to 0.
         if fixed_bg is not None:
