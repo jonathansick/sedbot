@@ -49,7 +49,7 @@ class LibraryModel(object):
         self._seds = seds
         self._errs = sed_errs
         self._areas = areas
-        self._d
+        self._d = d
         self._obs_bands = sed_bands
         self._instruments = instruments
         self.pixel_metadata = pixel_metadata
@@ -127,7 +127,7 @@ class LibraryModel(object):
 
     @property
     def library_file(self):
-        return self._library_h5_file
+        return self._h5_file
 
     @property
     def library_group(self):
