@@ -171,12 +171,13 @@ class LibraryEstimator(object):
         # FIXME this pattern loads everything into memory; maybe not good
         args = []
         bands = tuple(bands)  # to slice by bandpass (columns)
+        # this slices only the bands used for observations
         x = self.library_h5_file[self.library_group_name]['seds'][bands]
         model_flux = x.view(np.float64).reshape(x.shape + (-1,))
         for i in xrange(model_flux.shape[0]):
             args.append((obs_flux,
                          obs_err,
-                         model_flux[i, self.band_indices].flatten()))
+                         model_flux[i, :].flatten()))
 
         results = _map(LibraryEstimator._compute_lnp, args)
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
