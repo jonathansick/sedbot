@@ -182,7 +182,7 @@ class LibraryEstimator(object):
                          model_flux[i, :].flatten()))
 
         with Timer() as timer:
-            results = _map(LibraryEstimator._compute_lnp, args)
+            results = _map(_compute_lnp, args)
         print "Marginalization took", timer
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
         output_data = np.empty(model_flux.shape[0], dtype=d)
@@ -191,14 +191,14 @@ class LibraryEstimator(object):
             output_data['mass'][i] = mass
         return output_data
 
-    @staticmethod
-    def _compute_lnp(args):
-        """See da Cunha, Charlot and Elbaz (2008) eq 33 for info."""
-        obs_flux, obs_err, model_flux = args
-        # This math minimizes chi-sq in the residuals equation; and gives mass
-        _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
-        _b = np.sum((model_flux / obs_err) ** 2.)
-        mass = _a / _b
-        residuals = lambda x: (x * model_flux - obs_flux) / obs_err
-        lnL = -0.5 * np.sum(residuals(mass) ** 2.)
-        return lnL, mass
+
+def _compute_lnp(args):
+    """See da Cunha, Charlot and Elbaz (2008) eq 33 for info."""
+    obs_flux, obs_err, model_flux = args
+    # This math minimizes chi-sq in the residuals equation; and gives mass
+    _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
+    _b = np.sum((model_flux / obs_err) ** 2.)
+    mass = _a / _b
+    residuals = lambda x: (x * model_flux - obs_flux) / obs_err
+    lnL = -0.5 * np.sum(residuals(mass) ** 2.)
+    return lnL, mass
