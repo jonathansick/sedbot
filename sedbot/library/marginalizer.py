@@ -177,9 +177,10 @@ class LibraryEstimator(object):
         x = self.library_h5_file[self.library_group_name]['seds'][bands]
         model_flux = x.view(np.float64).reshape(x.shape + (-1,))
         for i in xrange(model_flux.shape[0]):
+            m_flux = model_flux[i, :].flatten()
             args.append((obs_flux,
                          obs_err,
-                         model_flux[i, :].flatten()))
+                         m_flux))
 
         with Timer() as timer:
             results = _map(_compute_lnp, args)
@@ -199,6 +200,6 @@ def _compute_lnp(args):
     _a = np.sum(obs_flux * model_flux / obs_err ** 2.)
     _b = np.sum((model_flux / obs_err) ** 2.)
     mass = _a / _b
-    residuals = lambda x: (x * model_flux - obs_flux) / obs_err
-    lnL = -0.5 * np.sum(residuals(mass) ** 2.)
+    residuals = (mass * model_flux - obs_flux) / obs_err
+    lnL = -0.5 * np.sum(residuals ** 2.)
     return lnL, mass
