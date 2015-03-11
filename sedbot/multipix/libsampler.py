@@ -124,25 +124,20 @@ class MultiPixelLibraryGibbsBgSampler(object):
 
         # Compute SP parameters for each SED, with background subtracted
         for i in xrange(n_pixels):
-            print "Pixel {0:d}".format(i)
+            # print "Pixel {0:d}".format(i)
             le = self.model.estimator_for_pixel(i, B,
                                                 ncpu=self._n_cpu_estimator)
             # marginal estimate of model parameters
             for j, name in enumerate(self.model.theta_params):
-                with Timer() as timer:
-                    self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
-                print name, timer
+                self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
             # marginal estimate of metadata parameters
             for j, name in enumerate(self.model.meta_params):
-                print name
                 self.blob_chain[k, i, j] = le.estimate_meta(name, p=(0.5,))[0]
             # marginal estimate of M/L
             for j, band in enumerate(self.model.library_bands):
-                print "M/L", band
                 self.ml_chain[k, i, j] = le.estimate_ml(band, p=(0.5,))[0]
             # marginal estimate of SED
             for j, band in enumerate(self.model.library_bands):
-                print "SED", band
                 self.sed_chain[k, i, j] = le.estimate_flux(band, p=(0.5,))[0]
 
     def _estimate_background(self, k):

@@ -47,9 +47,13 @@ class LibraryEstimator(object):
         self._param_sort_cache = {}
         self._flux_sort_cache = {}
         self._ml_sort_cache = {}
+        self._meta_sort_cache = {}
+        self._mass_sort_cache = None
         self._param_cdf_cache = {}
         self._flux_cdf_cache = {}
         self._ml_cdf_cache = {}
+        self._meta_cdf_cache = {}
+        self._mass_cdf_cache = None
 
     @property
     def group(self):
@@ -98,20 +102,41 @@ class LibraryEstimator(object):
     def estimate_mass_scale(self, p=(0.2, 0.5, 0.8)):
         """Estimate of the mass scaling parameter."""
         model_values = self.chisq_data['mass']
-        return self._estimate(model_values, p=p)
+        if self._mass_sort_cache is None or self._mass_cdf_cache is None:
+            srt, cdf = self._build_cdf(model_values)
+            self._mass_sort_cache = srt
+            self._mass_cdf_cache = cdf
+        return self._estimate(model_values,
+                              srt=self._mass_sort_cache,
+                              cdf=self._param_cdf_cache,
+                              p=p)
 
     def estimate_flux(self, band, p=(0.2, 0.5, 0.8)):
         """Estimate of marginalized model flux in a given band."""
         assert band in self.bands
         # Flux is scaled by mass
         model_values = self.group['seds'][band] * self.chisq_data['mass']
-        return self._estimate(model_values, p=p)
+        if band not in self._flux_sort_cache:
+            srt, cdf = self._build_cdf(model_values)
+            self._flux_sort_cache[band] = srt
+            self._flux_cdf_cache[band] = cdf
+        return self._estimate(model_values,
+                              srt=self._flux_sort_cache[band],
+                              cdf=self._flux_cdf_cache[band],
+                              p=p)
 
     def estimate_ml(self, band, p=(0.2, 0.5, 0.8)):
         """Estimate of the M/L parameter in a given band."""
         assert band in self.bands
         model_values = self.group['mass_light'][band]
-        return self._estimate(model_values, p=p)
+        if band not in self._ml_sort_cache:
+            srt, cdf = self._build_cdf(model_values)
+            self._ml_sort_cache[band] = srt
+            self._ml_cdf_cache[band] = cdf
+        return self._estimate(model_values,
+                              srt=self._ml_sort_cache[band],
+                              cdf=self._ml_cdf_cache[band],
+                              p=p)
 
     def estimate_meta(self, name, p=(0.2, 0.5, 0.8)):
         """Estimate of a metadata parameter (computed stellar
@@ -123,7 +148,14 @@ class LibraryEstimator(object):
         # FIXME a better way to do this more reliably?
         if name in ('logMstar', 'logMdust', 'logLbol', 'logSFR'):
             model_values += np.log10(self.chisq_data['mass'])
-        return self._estimate(model_values, p=p)
+        if name not in self._meta_sort_cache:
+            srt, cdf = self._build_cdf(model_values)
+            self._meta_sort_cache[name] = srt
+            self._meta_cdf_cache[name] = cdf
+        return self._estimate(model_values,
+                              srt=self._meta_sort_cache[name],
+                              cdf=self._meta_cdf_cache[name],
+                              p=p)
 
     def _estimate(self, model_values, srt=None, cdf=None, p=(0.2, 0.5, 0.8)):
         """Perform marginalization to generate PDF estimates at the given
