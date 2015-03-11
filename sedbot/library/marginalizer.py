@@ -44,6 +44,13 @@ class LibraryEstimator(object):
                                                     bands, d, ncpu)
         self._p = np.exp(self.chisq_data['lnp'])
 
+        self._param_sort_cache = {}
+        self._flux_sort_cache = {}
+        self._ml_sort_cache = {}
+        self._param_cdf_cache = {}
+        self._flux_cdf_cache = {}
+        self._ml_cdf_cache = {}
+
     @property
     def group(self):
         return self.library_h5_file[self.library_group_name]
@@ -79,7 +86,14 @@ class LibraryEstimator(object):
         """
         assert name in self.params
         model_values = self.group['params'][name]
-        return self._estimate(model_values, p=p)
+        if name not in self._param_sort_cache:
+            srt, cdf = self._build_cdf(model_values)
+            self._param_sort_cache[name] = srt
+            self._param_cdf_cache[name] = cdf
+        return self._estimate(model_values,
+                              srt=self._param_sort_cache[name],
+                              cdf=self._param_cdf_cache[name],
+                              p=p)
 
     def estimate_mass_scale(self, p=(0.2, 0.5, 0.8)):
         """Estimate of the mass scaling parameter."""
@@ -111,7 +125,7 @@ class LibraryEstimator(object):
             model_values += np.log10(self.chisq_data['mass'])
         return self._estimate(model_values, p=p)
 
-    def _estimate(self, model_values, p=(0.2, 0.5, 0.8)):
+    def _estimate(self, model_values, srt=None, cdf=None, p=(0.2, 0.5, 0.8)):
         """Perform marginalization to generate PDF estimates at the given
         probability thresholds.
 
@@ -120,16 +134,19 @@ class LibraryEstimator(object):
         model_values : ndarray
             A 1D ndarray of model values, corresponding to the table of models.
         """
-        # TODO cache the sorts for each set of model values
-        # pass it to this method?
-        srt = np.argsort(model_values)
-        # TODO cache 'lnp'
-        cdf = np.cumsum(self._p[srt])
+        if srt is None or cdf is None:
+            srt = np.argsort(model_values)
+            cdf = np.cumsum(self._p[srt])
         # Normalize the cdf to a total probability of 1.
         cdf /= cdf[-1]
         # Find the values at each probability
         percentile_values = np.interp(p, cdf, model_values[srt])
         return percentile_values
+
+    def _build_cdf(self, model_values):
+        srt = np.argsort(model_values)
+        cdf = np.cumsum(self._p[srt])
+        return srt, cdf
 
     def _estimate_from_pdf(self, model_values, p=(0.2, 0.5, 0.8)):
         """Perform marginalization to generate PDF estimates at the given
