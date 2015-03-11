@@ -258,8 +258,11 @@ class LibraryEstimator(object):
             / obs_err
         assert np.all(np.power(residuals, 2) >= 0.)
         lnp = -0.5 * np.sum(np.power(residuals, 2), axis=1)
+        # Re-scale the probabilities
+        lnp -= lnp.max() + 1.
         assert np.all(lnp < 0.)
         print "lnp.min()/max()", lnp.min(), lnp.max()
+        print "lnp.median", np.median(lnp)
         # print "Marginalization took", timer
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
         output_data = np.empty(model_flux.shape[0], dtype=d)
