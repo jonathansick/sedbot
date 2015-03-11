@@ -64,12 +64,14 @@ class MultiPixelLibraryGibbsBgSampler(object):
 
         with ProgressBar(n_iter) as bar:
             for i in xrange(n_iter):
-                # Sample stellar populations
-                self._estimate_theta(i, B=B0)
-                B0 = None
+                with Timer() as timer:  # NOQA for timing
+                    # Sample stellar populations
+                    self._estimate_theta(i, B=B0)
+                    B0 = None
 
-                # Estimate background given current SP state
-                self._estimate_background(i)
+                    # Estimate background given current SP state
+                    self._estimate_background(i)
+                # print "Step {0:d} took {1:.2f} sec".format(i, timer.interval)
 
                 bar.update()
 
