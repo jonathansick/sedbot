@@ -166,11 +166,10 @@ class LibraryEstimator(object):
         model_values : ndarray
             A 1D ndarray of model values, corresponding to the table of models.
         """
-        if srt is None or cdf is None:
-            srt = np.argsort(model_values)
-            cdf = np.cumsum(self._p[srt])
-        # Normalize the cdf to a total probability of 1.
-        cdf /= cdf[-1]
+        # if srt is None or cdf is None:
+        #     srt = np.argsort(model_values)
+        #     cdf = np.cumsum(self._p[srt])
+        srt, cdf = self._build_cdf(model_values)
         # Find the values at each probability
         percentile_values = np.interp(p, cdf, model_values[srt])
         return percentile_values
@@ -179,6 +178,8 @@ class LibraryEstimator(object):
         srt = np.argsort(model_values)
         # use float32 to preserve memory
         cdf = np.cumsum(self._p[srt], dtype=np.float32)
+        # Normalize the cdf to a total probability of 1.
+        cdf /= cdf[-1]
         assert np.all(np.diff(cdf) >= 0.)
         return srt, cdf
 
