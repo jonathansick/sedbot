@@ -42,10 +42,7 @@ class LibraryEstimator(object):
         self._band_indices = None
         self.chisq_data = self._model_ln_likelihood(obs_flux, obs_err,
                                                     bands, d, ncpu)
-        print "lnp.min/max", self.chisq_data['lnp'].min(), \
-            self.chisq_data['lnp'].max()
         self._p = np.exp(self.chisq_data['lnp'])
-        print "self._p.min/max", self._p.min(), self._p.max()
 
         self._param_sort_cache = {}
         self._flux_sort_cache = {}
@@ -169,12 +166,10 @@ class LibraryEstimator(object):
         model_values : ndarray
             A 1D ndarray of model values, corresponding to the table of models.
         """
-        print "self._p.max()", self._p.max()
         if srt is None or cdf is None:
             srt = np.argsort(model_values)
             cdf = np.cumsum(self._p[srt])
         # Normalize the cdf to a total probability of 1.
-        print cdf[-1]
         cdf /= cdf[-1]
         # Find the values at each probability
         percentile_values = np.interp(p, cdf, model_values[srt])
@@ -252,17 +247,14 @@ class LibraryEstimator(object):
         a = np.sum(obs_flux * model_flux / obs_err ** 2., axis=1)
         b = np.sum((model_flux / obs_err) ** 2., axis=1)
         mass = a / b
-        print "sn", obs_flux / obs_err
-        assert np.all(mass > 0.)
+        # assert np.all(mass > 0.)
         residuals = (np.atleast_2d(mass).T * model_flux - obs_flux) \
             / obs_err
-        assert np.all(np.power(residuals, 2) >= 0.)
+        # assert np.all(np.power(residuals, 2) >= 0.)
         lnp = -0.5 * np.sum(np.power(residuals, 2), axis=1)
         # Re-scale the probabilities
         lnp -= lnp.max() + 1.
-        assert np.all(lnp < 0.)
-        print "lnp.min()/max()", lnp.min(), lnp.max()
-        print "lnp.median", np.median(lnp)
+        # assert np.all(lnp < 0.)
         # print "Marginalization took", timer
         d = np.dtype([('lnp', np.float), ('mass', np.float)])
         output_data = np.empty(model_flux.shape[0], dtype=d)
