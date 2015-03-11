@@ -42,6 +42,7 @@ class LibraryEstimator(object):
         self._band_indices = None
         self.chisq_data = self._model_ln_likelihood(obs_flux, obs_err,
                                                     bands, d, ncpu)
+        self._p = np.exp(self.chisq_data['lnp'])
 
     @property
     def group(self):
@@ -111,6 +112,26 @@ class LibraryEstimator(object):
         return self._estimate(model_values, p=p)
 
     def _estimate(self, model_values, p=(0.2, 0.5, 0.8)):
+        """Perform marginalization to generate PDF estimates at the given
+        probability thresholds.
+
+        Parameters
+        ----------
+        model_values : ndarray
+            A 1D ndarray of model values, corresponding to the table of models.
+        """
+        # TODO cache the sorts for each set of model values
+        # pass it to this method?
+        srt = np.argsort(model_values)
+        # TODO cache 'lnp'
+        cdf = np.cumsum(self._p[srt])
+        # Normalize the cdf to a total probability of 1.
+        cdf /= cdf[-1]
+        # Find the values at each probability
+        percentile_values = np.interp(p, cdf, model_values[srt])
+        return percentile_values
+
+    def _estimate_from_pdf(self, model_values, p=(0.2, 0.5, 0.8)):
         """Perform marginalization to generate PDF estimates at the given
         probability thresholds.
 
