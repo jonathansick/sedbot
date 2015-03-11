@@ -166,13 +166,15 @@ class LibraryEstimator(object):
         model_values : ndarray
             A 1D ndarray of model values, corresponding to the table of models.
         """
-        # if srt is None or cdf is None:
-        #     srt = np.argsort(model_values)
-        #     cdf = np.cumsum(self._p[srt])
-        srt, cdf = self._build_cdf(model_values)
+        if srt is None or cdf is None:
+            srt, cdf = self._build_cdf(model_values)
         # Find the values at each probability
-        percentile_values = np.interp(p, cdf, model_values[srt])
-        return percentile_values
+        # values_at_p = np.interp(p, cdf, model_values[srt])
+        values_at_p = np.empty(len(p), dtype=np.float)
+        # trying argmin instead of interpolation
+        for i in xrange(len(p)):
+            values_at_p[i] = model_values[np.argmin(np.power(cdf - p[i], 2.))]
+        return values_at_p
 
     def _build_cdf(self, model_values):
         srt = np.argsort(model_values)
@@ -180,7 +182,7 @@ class LibraryEstimator(object):
         cdf = np.cumsum(self._p[srt], dtype=np.float32)
         # Normalize the cdf to a total probability of 1.
         cdf /= cdf[-1]
-        assert np.all(np.diff(cdf) >= 0.)
+        # assert np.all(np.diff(cdf) >= 0.)
         return srt, cdf
 
     def _estimate_from_pdf(self, model_values, p=(0.2, 0.5, 0.8)):
@@ -200,8 +202,8 @@ class LibraryEstimator(object):
         cdf = np.cumsum(pdf * delta)
         grid_center = 0.5 * (grid[0:-1] + grid[1:])
         # TODO is this the hard part for using 2D model_values inputs?
-        percentile_values = np.interp(p, cdf, grid_center)
-        return percentile_values
+        values_at_p = np.interp(p, cdf, grid_center)
+        return values_at_p
 
     def _build_histogram_grid(self, model_values, n_elements=1500):
         grid = np.linspace(model_values.min(), model_values.max(),
