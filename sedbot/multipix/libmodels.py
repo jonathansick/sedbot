@@ -157,17 +157,18 @@ class LibraryModel(object):
         """
         diff_mean = np.empty(self.n_bands, dtype=np.float)
         diff_var = np.empty(self.n_bands, dtype=np.float)
-        A = self._areas
+        A = np.array(self._areas)
         # Do it band-at-a-time so we can filter out NaNs in each band
         for i in xrange(self.n_bands):
             obs_var = (self._errs[:, i] / A) ** 2.
             g = np.where(np.isfinite(self._seds[:, i]))[0]
             residuals = ((self._seds[:, i] - model_seds[:, i]) / A)[g]
-            diff_mean[i] = np.average(residuals,
-                                      weights=1. / obs_var[g])
+            h = np.where(np.isfinite(residuals))[0]
+            diff_mean[i] = np.average(residuals[h],
+                                      weights=1. / obs_var[g][h])
             # Establish the variance of the sampled Gaussian from
             # error propagation, or from the sample variance of residuals???
-            diff_var[i] = 1. / np.sum(1. / obs_var[g])
+            diff_var[i] = 1. / np.nansum(1. / obs_var[g][h])
         B_new = np.sqrt(diff_var) * np.random.randn(self.n_bands) \
             + diff_mean
 
