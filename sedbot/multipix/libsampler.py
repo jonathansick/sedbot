@@ -132,6 +132,7 @@ class MultiPixelLibraryGibbsBgSampler(object):
             # marginal estimate of model parameters
             for j, name in enumerate(self.model.theta_params):
                 self.theta_chain[k, i, j] = le.estimate(name, p=(0.5,))[0]
+                print i, name, self.theta_chain[k, i, j]
             # marginal estimate of metadata parameters
             for j, name in enumerate(self.model.meta_params):
                 self.blob_chain[k, i, j] = le.estimate_meta(name, p=(0.5,))[0]
