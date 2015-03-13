@@ -139,13 +139,15 @@ class LibraryModel(object):
 
     def estimator_for_pixel(self, pix_id, B, ncpu=1):
         """Make a LibraryEstimator instance for this pixel."""
-        if pix_id not in self._estimator_cache:
-            le = LibraryEstimator(
-                self._seds[pix_id, :] - B, self._errs[pix_id, :],
-                self._obs_bands, self.d,
-                self.library_file, self.library_group,
-                ncpu=ncpu)
-            self._estimator_cache[pix_id] = le
+        le = LibraryEstimator(
+            self._seds[pix_id, :] - B, self._errs[pix_id, :],
+            self._obs_bands, self.d,
+            self.library_file, self.library_group,
+            ncpu=ncpu)
+        # Don't technically *need* the cache but useful for diagnostics
+        # Can't reuse from cache because the background changes
+        # template probabilities
+        self._estimator_cache[pix_id] = le
         return self._estimator_cache[pix_id]
 
     def estimate_background(self, model_seds):
