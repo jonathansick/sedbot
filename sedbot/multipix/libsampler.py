@@ -174,6 +174,7 @@ class MultiPixelLibraryGibbsBgSampler(object):
             ('msun_ab', self.model.msun_ab),
             ('band_indices', self.model.band_indices),
             ('theta_params', self.model.theta_params),
+            ('meta_params', self.model.meta_params),
             ('sed', self.model._seds),
             ('sed_err', self.model._errs),
             ('pixels', self.model.pixel_metadata),
