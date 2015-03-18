@@ -19,7 +19,7 @@ def plot_cc_density(*args, **kwargs):
     kwargs.update(dict(statistic='count',
                        meta_property=None,
                        theta_property=None))
-    plot_cc(*args, **kwargs)
+    return plot_cc(*args, **kwargs)
 
 
 def plot_cc(h5file, group_name, ax, x_bands, y_bands,
@@ -53,10 +53,10 @@ def plot_cc(h5file, group_name, ax, x_bands, y_bands,
     if value_func is not None:
         H = value_func(H)
 
-    ax.imshow(H, origin='lower',
-              cmap=cmap,
-              interpolation='nearest',
-              extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]])
+    im = ax.imshow(H, origin='lower',
+                   cmap=cmap,
+                   interpolation='nearest',
+                   extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]])
     ax.set_xlim(x_edges[0], x_edges[-1])
     ax.set_ylim(y_edges[0], y_edges[-1])
 
@@ -66,6 +66,8 @@ def plot_cc(h5file, group_name, ax, x_bands, y_bands,
     ylabel = r"${0} - {1}$".format(latex_name(y_bands[0], mathmode=False),
                                    latex_name(y_bands[-1], mathmode=False))
     ax.set_ylabel(ylabel)
+
+    return im
 
 
 def get_colour(group, bands):
