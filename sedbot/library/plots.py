@@ -23,7 +23,8 @@ def plot_cc_density(*args, **kwargs):
 
 
 def plot_cc(h5file, group_name, ax, x_bands, y_bands,
-            meta_property=None, theta_property=None, values=None,
+            meta_property=None, theta_property=None,
+            ml_band=None, values=None,
             xlim=None, ylim=None, statistic='median', bins=100,
             cmap=mpl.cm.cubehelix, value_func=None):
     group = h5file[group_name]
@@ -41,6 +42,8 @@ def plot_cc(h5file, group_name, ax, x_bands, y_bands,
         values = group['meta'][meta_property]
     elif theta_property is not None:
         values = group['params'][theta_property]
+    elif ml_band is not None:
+        values = group['mass_light'][ml_band]
     elif values is not None:
         assert len(values) == len(x)
     else:
