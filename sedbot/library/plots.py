@@ -53,10 +53,14 @@ def plot_cc(h5file, group_name, ax, x_bands, y_bands,
                                               statistic=statistic,
                                               bins=bins,
                                               range=rng)
+    print x_edges[0], x_edges[-1]
+    print y_edges[0], y_edges[-1]
     if value_func is not None:
         H = value_func(H)
 
-    im = ax.imshow(H, origin='lower',
+    im = ax.imshow(H.T,
+                   origin='lower',
+                   aspect='auto',
                    cmap=cmap,
                    interpolation='nearest',
                    extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]])
