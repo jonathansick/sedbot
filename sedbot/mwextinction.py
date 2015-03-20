@@ -10,6 +10,57 @@ import numpy as np
 from astropy.table import Table
 
 
+# Mapping of fsps band names to SF 2011 extinction table
+SF_BAND_NAMES = {'sdss_u': 'SDSS u',
+                 'sdss_g': 'SDSS g',
+                 'sdss_r': 'SDSS r',
+                 'sdss_i': 'SDSS i',
+                 '2mass_J': 'UKIRT J',
+                 '2mass_Ks': 'UKIRT K',
+                 'wfc3_ir_f110w': 'WFC3 F110W',
+                 'wfc3_ir_f160w': 'WFC3 F160W',
+                 'wfc3_uvis_f275w': 'WFC3 F275W',
+                 'wfc3_uvis_f336w': 'WFC3 F336W',
+                 'wfc_acs_f475w': 'ACS F475W',
+                 'wfc_acs_f606w': 'ACS F606W',
+                 'wfc_acs_f814w': 'ACS F814W'}
+
+
+def get_fsps_extinction_coefficient(fsps_band, Rv='3.1'):
+    """Get the extinction coefficient for this bandpass, in FSPS band naming,
+    based on SF2011.
+
+    Parameters
+    ----------
+    bandname : str
+        Name of the FSPS bandpass.
+    Rv : str
+        The value of :math:`R_V`, as a string. Can be ``'2.1'``, ``'3.1'``
+        ``'4.1'``, and ``'5.1'``. Default is ``'3.1'``.
+    """
+    sf_band = SF_BAND_NAMES[fsps_band]
+    return get_extinction_coefficient(sf_band, Rv=Rv)
+
+
+def get_extinction_coefficient(bandname, Rv='3.1'):
+    """Get the extinction coefficient for this bandpass, based on SF2011.
+
+    Parameters
+    ----------
+    bandname : str
+        Name of the bandpass. Use :func:`sedbot.mwextinction.sf2001_bandpasses`
+        to get a list of valid bandpass names.
+    Rv : str
+        The value of :math:`R_V`, as a string. Can be ``'2.1'``, ``'3.1'``
+        ``'4.1'``, and ``'5.1'``. Default is ``'3.1'``.
+    """
+    assert Rv in ('2.1', '3.1', '4.1', '5.1')
+    tbl = load_sf2011()
+    i = np.where(tbl['bandpass'] == bandname)[0][0]
+    X = float(tbl[i]["R_V_{0}".format(Rv)])
+    return X
+
+
 def correct_mw_extinction(mag, eBV, bandname, Rv='3.1'):
     """Correct a magnitude (or surface brightness) for MW extinction.
 
@@ -30,9 +81,7 @@ def correct_mw_extinction(mag, eBV, bandname, Rv='3.1'):
         ``'4.1'``, and ``'5.1'``. Default is ``'3.1'``.
     """
     assert Rv in ('2.1', '3.1', '4.1', '5.1')
-    tbl = load_sf2011()
-    i = np.where(tbl['bandpass'] == bandname)[0][0]
-    X = float(tbl[i]["R_V_{0}".format(Rv)])
+    X = get_extinction_coefficient(bandname, Rv=Rv)
     return mag - X * eBV
 
 
