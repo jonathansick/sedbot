@@ -22,12 +22,12 @@ def plot_cc_density(*args, **kwargs):
     return plot_cc(*args, **kwargs)
 
 
-def plot_cc(h5file, group_name, ax, x_bands, y_bands,
+def plot_cc(group, ax, x_bands, y_bands,
             meta_property=None, theta_property=None,
             ml_band=None, values=None,
             xlim=None, ylim=None, statistic='median', bins=100,
-            cmap=mpl.cm.cubehelix, value_func=None):
-    group = h5file[group_name]
+            cmap=mpl.cm.cubehelix, value_func=None,
+            x_label_pad=None, y_label_pad=None, vmin=None, vmax=None):
     x = get_colour(group, x_bands)
     y = get_colour(group, y_bands)
 
@@ -63,16 +63,17 @@ def plot_cc(h5file, group_name, ax, x_bands, y_bands,
                    aspect='auto',
                    cmap=cmap,
                    interpolation='nearest',
+                   vmin=vmin, vmax=vmax,
                    extent=[x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]])
     ax.set_xlim(x_edges[0], x_edges[-1])
     ax.set_ylim(y_edges[0], y_edges[-1])
 
     xlabel = r"${0} - {1}$".format(latex_name(x_bands[0], mathmode=False),
                                    latex_name(x_bands[-1], mathmode=False))
-    ax.set_xlabel(xlabel)
+    ax.set_xlabel(xlabel, labelpad=x_label_pad)
     ylabel = r"${0} - {1}$".format(latex_name(y_bands[0], mathmode=False),
                                    latex_name(y_bands[-1], mathmode=False))
-    ax.set_ylabel(ylabel)
+    ax.set_ylabel(ylabel, labelpad=y_label_pad)
 
     return im
 
