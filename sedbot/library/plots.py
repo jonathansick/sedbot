@@ -49,14 +49,17 @@ def plot_cc(group, ax, x_bands, y_bands,
     else:
         values = None
 
+    if value_func is not None:
+        values = value_func(values)
+
     H, x_edges, y_edges = binned_statistic_2d(x, y, values,
                                               statistic=statistic,
                                               bins=bins,
                                               range=rng)
     print x_edges[0], x_edges[-1]
     print y_edges[0], y_edges[-1]
-    if value_func is not None:
-        H = value_func(H)
+    # if value_func is not None:
+    #     H = value_func(H)
 
     im = ax.imshow(H.T,
                    origin='lower',
