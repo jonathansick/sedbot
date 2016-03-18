@@ -26,7 +26,7 @@ def plot_cc(group, ax, x_bands, y_bands,
             meta_property=None, theta_property=None,
             ml_band=None, values=None,
             xlim=None, ylim=None, statistic='median', bins=100,
-            cmap=mpl.cm.cubehelix, value_func=None,
+            cmap=mpl.cm.cubehelix, value_func=None, hist_func=None,
             x_label_pad=None, y_label_pad=None, vmin=None, vmax=None):
     x = get_colour(group, x_bands)
     y = get_colour(group, y_bands)
@@ -58,8 +58,8 @@ def plot_cc(group, ax, x_bands, y_bands,
                                               range=rng)
     print x_edges[0], x_edges[-1]
     print y_edges[0], y_edges[-1]
-    # if value_func is not None:
-    #     H = value_func(H)
+    if hist_func is not None:
+        H = hist_func(H)
 
     im = ax.imshow(H.T,
                    origin='lower',
