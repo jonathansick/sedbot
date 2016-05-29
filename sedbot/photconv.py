@@ -272,7 +272,8 @@ def sb_to_luminosity(sb, msun, A, d):
     sb : ndarray
         Surface brightness (mag/arcsec^2)
     msun : float
-        Absolute magnitude of the Sun.
+        Absolute magnitude of the Sun. 4.74 is the bolometric absolute
+        magnitude of the sun.
     area : ndarray
         Area of region in square arcseconds.
     d : ndarray
@@ -295,7 +296,8 @@ def micro_jy_to_luminosity(mjy, msun, d):
     mjy : ndarray
         Flux in microjankies.
     msun : float
-        Absolute magnitude of the Sun.
+        Absolute magnitude of the Sun. 4.74 is the bolometric absolute
+        magnitude of the Sun.
     d : ndarray
         Distance in parsecs.
 
