@@ -7,6 +7,9 @@ Tools for plotting observed SEDs.
 import numpy as np
 import fsps
 
+import astropy.units as u
+from astropy import constants as const
+
 
 # Speed of light in cgs
 c = 2.997924 * 10. ** 10.  # cm/sec
@@ -16,7 +19,7 @@ def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
     """Plot SED as points, possibly with errorbars.
 
     X-axis is log(Lambda/µm) and y-axis in log(lambda f_lambda) in cgs.
-    
+
     Parameters
     ----------
     ax : `axes`
@@ -108,11 +111,22 @@ def label_filters(ax, flux, bands, **kwargs):
 
 def microJy_to_lambdaFlambda(flux, bands):
     # see http://coolwiki.ipac.caltech.edu/index.php/Units#Notes_on_plotting
-    lmbda = wavelength_microns(bands)
-    lmbda_cm = lmbda / 10000.
-    Fcgs = flux * 10. ** (6. - 23)
-    lambdaFlambda = lmbda_cm * Fcgs
-    return lambdaFlambda
+    Fnu = flux * u.Jy
+    lmbda = wavelength_microns(bands) * u.micron
+    # lmbda_cm = lmbda / 10000.
+    Fnu_cgs = Fnu.to(u.erg / u.cm**2 / u.s / u.Hz,
+                     equivalencies=u.spectral_density(lmbda))
+    # Fcgs = flux * 10. ** (6. - 23)
+    # lambdaFlambda = lmbda_cm * Fcgs
+    Flambda = Fnu_cgs * const.c / lmbda ** 2.
+    # print 'F_lambda', Flambda
+    # print Flambda.decompose(bases=[u.erg, u.cm, u.s])
+    lambdaFlambda = (lmbda * Flambda).decompose(bases=[u.erg, u.cm, u.s])
+    print 'lambda F_lambda', lambdaFlambda
+
+    f_sun = u.L_sun.cgs / (4. * np.pi * const.au.cgs ** 2)
+
+    return lambdaFlambda / f_sun
 
 
 def wavelength_microns(bands):
