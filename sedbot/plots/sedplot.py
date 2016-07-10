@@ -111,7 +111,7 @@ def label_filters(ax, flux, bands, **kwargs):
 
 def microJy_to_lambdaFlambda(flux, bands):
     # see http://coolwiki.ipac.caltech.edu/index.php/Units#Notes_on_plotting
-    Fnu = flux * u.Jy
+    Fnu = flux * u.microJansky
     lmbda = wavelength_microns(bands) * u.micron
     # lmbda_cm = lmbda / 10000.
     Fnu_cgs = Fnu.to(u.erg / u.cm**2 / u.s / u.Hz,
