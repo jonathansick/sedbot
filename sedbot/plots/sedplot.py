@@ -15,7 +15,7 @@ from astropy import constants as const
 c = 2.997924 * 10. ** 10.  # cm/sec
 
 
-def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
+def plot_sed_points(ax, flux, bands, distance, fluxerr=None, **kwargs):
     """Plot SED as points, possibly with errorbars.
 
     X-axis is log(Lambda/µm) and y-axis in log(lambda f_lambda) in cgs.
@@ -26,13 +26,20 @@ def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
         Matplotlib axes.
     flux : ndarray
         SED in micro-Janskies.
+    distance : float or astropy.quanity
+        Distance to object (parsecs).
     bands : list
         List of `python-fsps` bandpass names, corresponding to flux array.
     fluxerr : ndarray
         Uncertainty in SED flux, micro-Janskies. Interpret as a symmetric
         standard deviation.
     """
-    y = np.log10(microJy_to_lambdaFlambda(flux, bands))
+    if not hasattr(distance, 'unit'):
+        distance = distance * u.parsec
+    if not hasattr(flux, 'unit'):
+        flux = flux * u.microjansky
+
+    y = np.log10(microJy_to_lambdaFlambda(flux, distance, bands))
     x = np.log10(wavelength_microns(bands))
     if fluxerr is not None:
         settings = {'ecolor': 'k',
@@ -47,8 +54,10 @@ def plot_sed_points(ax, flux, bands, fluxerr=None, **kwargs):
                     'marker': 'o',
                     'ms': 2}
         settings.update(kwargs)
-        yhi = np.log10(microJy_to_lambdaFlambda(flux + fluxerr, bands))
-        ylo = np.log10(microJy_to_lambdaFlambda(flux - fluxerr, bands))
+        yhi = np.log10(
+            microJy_to_lambdaFlambda(flux + fluxerr, distance, bands))
+        ylo = np.log10(
+            microJy_to_lambdaFlambda(flux - fluxerr, distance, bands))
         yerrhi = yhi - y
         yerrlo = y - ylo
         yerr = np.vstack([yerrhi, yerrlo])
@@ -109,23 +118,20 @@ def label_filters(ax, flux, bands, **kwargs):
                     zorder=-5)
 
 
-def microJy_to_lambdaFlambda(flux, bands):
+def microJy_to_lambdaFlambda(flux, distance, bands):
     # see http://coolwiki.ipac.caltech.edu/index.php/Units#Notes_on_plotting
-    Fnu = flux * u.microJansky
+    if not hasattr(flux, 'unit'):
+        Fnu = flux * u.microjansky
+    elif flux.unit is None:
+        Fnu = flux * u.microjansky
+    else:
+        Fnu = flux
     lmbda = wavelength_microns(bands) * u.micron
-    # lmbda_cm = lmbda / 10000.
     Fnu_cgs = Fnu.to(u.erg / u.cm**2 / u.s / u.Hz,
                      equivalencies=u.spectral_density(lmbda))
-    # Fcgs = flux * 10. ** (6. - 23)
-    # lambdaFlambda = lmbda_cm * Fcgs
     Flambda = Fnu_cgs * const.c / lmbda ** 2.
-    # print 'F_lambda', Flambda
-    # print Flambda.decompose(bases=[u.erg, u.cm, u.s])
     lambdaFlambda = (lmbda * Flambda).decompose(bases=[u.erg, u.cm, u.s])
-    print 'lambda F_lambda', lambdaFlambda
-
-    f_sun = u.L_sun.cgs / (4. * np.pi * const.au.cgs ** 2)
-
+    f_sun = u.L_sun.cgs / (4. * np.pi * distance.cgs ** 2)
     return lambdaFlambda / f_sun
 
 
