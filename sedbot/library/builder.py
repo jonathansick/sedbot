@@ -74,14 +74,22 @@ class LibraryBuilder(object):
         """
         dt = self._create_parameter_dtype()
         data = np.empty(n_models, dtype=dt)
+        col_names = dt.names
         data.fill(np.nan)
         i = 0
         while i < n_models:
             for name, generator in self.generators.iteritems():
                 data[name][i] = generator.sample()
+
+            if 'fburst' in col_names and 'const' in col_names:
+                if data['fburst'][i] + data['const'][i] > 1.:
+                    continue
+
+            if 'tburst' in col_names and 'sf_start' in col_names:
+                if data['tburst'][i] < data['sf_start'][i]:
+                    continue
+
             i += 1
-            # TODO create a mechanism for reviewing all parameters for sanity
-            # checking (i.e., might want all tburst after tstart, etc)
 
         # Persist the parameter catalog to HDF5; delete existing
         if "params" in self.group:
@@ -160,7 +168,13 @@ class LibraryBuilder(object):
 
                 logL = micro_jy_to_luminosity(flux, msun, 10.)
                 log_ml = np.log10(sp.stellar_mass) - logL
-                ml_table[n, i] = log_ml
+                # FIXME ml_table[n, i] = log_ml
+                # print(ml_table), log_ml
+                try:
+                    ml_table[n, i] = log_ml
+                except RuntimeError, e:
+                    print(n, i, log_ml)
+                    print e
 
             # Fill in meta data table
             meta_table['logMstar', i] = np.log10(sp.stellar_mass)
