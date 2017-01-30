@@ -7,14 +7,14 @@ Triangle plot.
 import numpy as np
 
 import matplotlib as mpl
-import triangle
+import corner
 
 from .tools import prep_plot_dir, escape_latex
 
 
 def triangle_plot(path, flatchain, param_names, limits=None,
                   figsize=(5, 5), truths=None, param_labels=None):
-    """Make a corner plot using the triangle.py package.
+    """Make a corner plot using the corner.py package.
 
     Triangle/corner plots are convenient visualizations of posterior
     distributions and covariances between parameters.
@@ -54,14 +54,14 @@ def triangle_plot(path, flatchain, param_names, limits=None,
         _labels = [escape_latex(n) for n in param_names]
 
     prep_plot_dir(path)
-    fig = triangle.corner(samples, labels=_labels, extents=limits,
-                          truths=truths,
-                          truth_color="#4682b4", scale_hist=False,
-                          quantiles=[0.25, 0.5, 0.75],
-                          verbose=True, plot_contours=True,
-                          plot_datapoints=True,
-                          bins=30,
-                          show_titles=True,
-                          fig=None)
+    fig = corner.corner(samples, labels=_labels, extents=limits,
+                        truths=truths,
+                        truth_color="#4682b4", scale_hist=False,
+                        quantiles=[0.25, 0.5, 0.75],
+                        verbose=True, plot_contours=True,
+                        plot_datapoints=True,
+                        bins=30,
+                        show_titles=True,
+                        fig=None)
     fig.savefig(path)
     mpl.pyplot.close(fig)
